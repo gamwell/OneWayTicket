@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { XCircle, ArrowLeft, ShoppingCart } from 'lucide-react';
+import { XCircle, ShoppingCart } from 'lucide-react';
 
 const CheckoutCancelPage = () => {
   const navigate = useNavigate();

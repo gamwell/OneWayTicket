@@ -51,28 +51,31 @@ const HomePage = () => {
 
   return (
     <div>
-      <section className="relative bg-gradient-to-br from-primary-900 via-secondary-600 to-secondary-500 text-white py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-display font-bold mb-6">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white py-24 px-4">
+        <div className="absolute inset-0 bg-gradient-neon opacity-20 animate-gradient"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,107,157,0.3),transparent_50%),radial-gradient(circle_at_70%_50%,rgba(0,229,255,0.3),transparent_50%)]"></div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center animate-fadeInScale">
+            <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 text-gradient-neon animate-float">
               Trouvez votre prochain événement
             </h1>
-            <p className="text-xl md:text-2xl mb-8 opacity-95">
-              Concerts, conférences, spectacles et bien plus encore
+            <p className="text-xl md:text-2xl mb-12 opacity-95 max-w-3xl mx-auto">
+              Concerts, conférences, spectacles et bien plus encore dans un univers digital unique
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link
                 to="/events"
-                className="inline-flex items-center justify-center space-x-2 px-8 py-4 bg-white text-secondary-600 rounded-lg font-semibold hover:bg-neutral-100 transition-all shadow-lg"
+                className="inline-flex items-center justify-center space-x-2 px-10 py-5 bg-gradient-to-r from-secondary-500 to-accent-500 rounded-2xl font-bold hover:from-secondary-600 hover:to-accent-600 transition-all duration-300 shadow-2xl hover:shadow-neon-pink/50 hover:scale-105 text-lg"
               >
-                <Search className="w-5 h-5" />
+                <Search className="w-6 h-6" />
                 <span>Explorer les événements</span>
               </Link>
               <Link
                 to="/auth/register"
-                className="inline-flex items-center justify-center space-x-2 px-8 py-4 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white hover:text-secondary-600 transition-all"
+                className="inline-flex items-center justify-center space-x-2 px-10 py-5 glass-effect rounded-2xl font-bold hover:bg-white/20 transition-all duration-300 border-2 border-white/30 hover:border-white/50 text-lg hover:scale-105"
               >
-                <Ticket className="w-5 h-5" />
+                <Ticket className="w-6 h-6" />
                 <span>Créer un compte</span>
               </Link>
             </div>
@@ -80,46 +83,52 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-20 px-4 bg-gradient-to-b from-neutral-50 to-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,107,157,0.1),transparent_50%),radial-gradient(circle_at_80%_20%,rgba(0,229,255,0.1),transparent_50%)]"></div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6 bg-gradient-to-br from-secondary-50 to-secondary-100 rounded-xl">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-600 text-white rounded-full mb-4">
-                <Calendar className="w-8 h-8" />
+            <div className="text-center p-8 card hover:shadow-neon-pink/20 animate-fadeIn group">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-secondary-500 to-secondary-600 text-white rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Calendar className="w-10 h-10" />
               </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-2">{stats.totalEvents}+</h3>
-              <p className="text-gray-600">Événements disponibles</p>
+              <h3 className="text-4xl font-bold gradient-text mb-3">{stats.totalEvents}+</h3>
+              <p className="text-gray-600 font-semibold">Événements disponibles</p>
             </div>
 
-            <div className="text-center p-6 bg-gradient-to-br from-accent-50 to-accent-100 rounded-xl">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-accent-600 text-white rounded-full mb-4">
-                <Ticket className="w-8 h-8" />
+            <div className="text-center p-8 card hover:shadow-neon-cyan/20 animate-fadeIn group" style={{animationDelay: '0.1s'}}>
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-accent-500 to-accent-600 text-white rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Ticket className="w-10 h-10" />
               </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-2">{stats.totalTickets}+</h3>
-              <p className="text-gray-600">Billets vendus</p>
+              <h3 className="text-4xl font-bold gradient-text mb-3">{stats.totalTickets}+</h3>
+              <p className="text-gray-600 font-semibold">Billets vendus</p>
             </div>
 
-            <div className="text-center p-6 bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 text-white rounded-full mb-4">
-                <Users className="w-8 h-8" />
+            <div className="text-center p-8 card hover:shadow-neon-purple/20 animate-fadeIn group" style={{animationDelay: '0.2s'}}>
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-neon-purple to-primary-700 text-white rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Users className="w-10 h-10" />
               </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-2">{stats.totalUsers}+</h3>
-              <p className="text-gray-600">Utilisateurs inscrits</p>
+              <h3 className="text-4xl font-bold gradient-text mb-3">{stats.totalUsers}+</h3>
+              <p className="text-gray-600 font-semibold">Utilisateurs inscrits</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Événements à venir</h2>
-              <p className="text-gray-600">Découvrez les prochains événements près de chez vous</p>
+      <section className="py-20 px-4 bg-gradient-to-b from-white to-neutral-50 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary-500/5 via-transparent to-accent-500/5"></div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex items-center justify-between mb-12">
+            <div className="animate-fadeIn">
+              <h2 className="text-4xl font-display font-bold mb-3">
+                <span className="gradient-text">Événements à venir</span>
+              </h2>
+              <p className="text-gray-600 text-lg">Découvrez les prochains événements près de chez vous</p>
             </div>
             <Link
               to="/events"
-              className="hidden md:inline-flex items-center space-x-2 text-secondary-600 hover:text-secondary-700 font-semibold"
+              className="hidden md:inline-flex items-center space-x-2 px-6 py-3 glass-effect text-secondary-600 hover:text-secondary-500 font-semibold rounded-xl transition-all hover:scale-105"
             >
               <span>Voir tout</span>
               <ArrowRight className="w-5 h-5" />
@@ -145,37 +154,35 @@ const HomePage = () => {
                 <Link
                   key={event.id}
                   to={`/events/${event.id}`}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow"
+                  className="card group overflow-hidden hover:shadow-2xl animate-fadeIn"
                 >
-                  <div className="relative h-48 bg-gradient-to-br from-gray-200 to-gray-300">
+                  <div className="relative h-56 bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden">
                     {event.image_urls && event.image_urls.length > 0 ? (
                       <img
                         src={event.image_urls[0]}
                         alt={event.titre}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Calendar className="w-16 h-16 text-gray-400" />
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-cyber">
+                        <Calendar className="w-16 h-16 text-white" />
                       </div>
                     )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     {event.category && (
-                      <div
-                        className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold text-white"
-                        style={{ backgroundColor: event.category.couleur }}
-                      >
+                      <div className="absolute top-4 left-4 glass-effect px-4 py-2 rounded-xl text-sm font-bold text-white backdrop-blur-md">
                         {event.category.nom}
                       </div>
                     )}
                   </div>
                   <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">
+                    <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-1 group-hover:text-gradient transition-all">
                       {event.titre}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-sm text-gray-600 mb-2 font-semibold">
                       {format(new Date(event.date_debut), "d MMMM yyyy 'à' HH'h'mm", { locale: fr })}
                     </p>
-                    <p className="text-sm text-gray-600 flex items-center space-x-1">
+                    <p className="text-sm text-gray-500 flex items-center space-x-1">
                       <span>{event.lieu}</span>
                       <span>•</span>
                       <span>{event.ville}</span>
@@ -203,22 +210,27 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-7xl mx-auto text-center">
-          <TrendingUp className="w-16 h-16 text-accent-500 mx-auto mb-6" />
-          <h2 className="text-3xl font-display font-bold text-gray-900 mb-4">
+      <section className="py-20 px-4 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-neon opacity-20 animate-gradient"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,107,157,0.2),transparent_70%)]"></div>
+
+        <div className="max-w-7xl mx-auto text-center relative z-10 animate-fadeInScale">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-neon-cyan to-neon-purple text-white rounded-2xl mx-auto mb-8 shadow-2xl animate-float">
+            <TrendingUp className="w-10 h-10" />
+          </div>
+          <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-white">
             Organisateur d'événements ?
           </h2>
-          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-white/90 mb-10 max-w-3xl mx-auto">
             Créez et gérez vos événements facilement avec notre plateforme intuitive.
             Profitez d'outils professionnels pour maximiser vos ventes.
           </p>
           <Link
             to="/auth/register"
-            className="inline-flex items-center space-x-2 px-8 py-4 bg-gradient-to-r from-accent-500 to-secondary-500 text-white rounded-lg font-semibold hover:from-accent-600 hover:to-secondary-600 transition-all shadow-lg"
+            className="inline-flex items-center space-x-2 px-10 py-5 bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-2xl font-bold hover:from-secondary-600 hover:to-accent-600 transition-all duration-300 shadow-2xl hover:shadow-neon-pink/50 hover:scale-105 text-lg"
           >
             <span>Devenir organisateur</span>
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-6 h-6" />
           </Link>
         </div>
       </section>

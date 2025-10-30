@@ -11,7 +11,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice } = useCart();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -74,12 +74,12 @@ const CheckoutPage = () => {
         throw new Error('Stripe non disponible');
       }
 
-      const { error } = await stripe.redirectToCheckout({
+      const result = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
       });
 
-      if (error) {
-        throw error;
+      if (result.error) {
+        throw result.error;
       }
     } catch (error: any) {
       console.error('Checkout error:', error);

@@ -26,14 +26,6 @@ interface Event {
   image_urls: string[];
 }
 
-interface TicketType {
-  id: string;
-  nom: string;
-  prix: number;
-  quantite_disponible: number;
-  quantite_vendue: number;
-}
-
 interface Stats {
   totalEvents: number;
   totalTicketsSold: number;

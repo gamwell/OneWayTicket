@@ -22,32 +22,32 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-50">
+    <nav className="glass-effect border-b border-white/10 sticky top-0 z-50 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-secondary-500 to-accent-500 rounded-lg flex items-center justify-center">
-              <Ticket className="w-6 h-6 text-white" />
+        <div className="flex justify-between items-center h-20">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-secondary-500 to-accent-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 animate-glow">
+              <Ticket className="w-7 h-7 text-white" />
             </div>
-            <span className="text-xl font-display font-bold bg-gradient-to-r from-secondary-600 via-accent-500 to-primary-700 bg-clip-text text-transparent">
+            <span className="text-2xl font-display font-bold gradient-text">
               ONEWAYTICKET
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-1">
             <Link
               to="/"
               className={`${
-                isActive('/') ? 'text-secondary-600 font-semibold' : 'text-gray-700 hover:text-secondary-600'
-              } transition-colors`}
+                isActive('/') ? 'bg-gradient-to-r from-secondary-500/10 to-accent-500/10 text-secondary-600 font-bold' : 'text-gray-700 hover:bg-white/10'
+              } px-4 py-2 rounded-xl transition-all duration-300 font-semibold`}
             >
               Accueil
             </Link>
             <Link
               to="/events"
               className={`${
-                isActive('/events') ? 'text-secondary-600 font-semibold' : 'text-gray-700 hover:text-secondary-600'
-              } transition-colors`}
+                isActive('/events') ? 'bg-gradient-to-r from-secondary-500/10 to-accent-500/10 text-secondary-600 font-bold' : 'text-gray-700 hover:bg-white/10'
+              } px-4 py-2 rounded-xl transition-all duration-300 font-semibold`}
             >
               Événements
             </Link>
@@ -55,8 +55,8 @@ const Navbar = () => {
               <Link
                 to="/my-tickets"
                 className={`${
-                  isActive('/my-tickets') ? 'text-secondary-600 font-semibold' : 'text-gray-700 hover:text-secondary-600'
-                } transition-colors flex items-center space-x-1`}
+                  isActive('/my-tickets') ? 'bg-gradient-to-r from-secondary-500/10 to-accent-500/10 text-secondary-600 font-bold' : 'text-gray-700 hover:bg-white/10'
+                } px-4 py-2 rounded-xl transition-all duration-300 flex items-center space-x-2 font-semibold`}
               >
                 <Calendar className="w-4 h-4" />
                 <span>Mes Billets</span>
@@ -65,61 +65,61 @@ const Navbar = () => {
             <Link
               to="/about"
               className={`${
-                isActive('/about') ? 'text-secondary-600 font-semibold' : 'text-gray-700 hover:text-secondary-600'
-              } transition-colors`}
+                isActive('/about') ? 'bg-gradient-to-r from-secondary-500/10 to-accent-500/10 text-secondary-600 font-bold' : 'text-gray-700 hover:bg-white/10'
+              } px-4 py-2 rounded-xl transition-all duration-300 font-semibold`}
             >
               À propos
             </Link>
             <Link
               to="/contact"
               className={`${
-                isActive('/contact') ? 'text-secondary-600 font-semibold' : 'text-gray-700 hover:text-secondary-600'
-              } transition-colors`}
+                isActive('/contact') ? 'bg-gradient-to-r from-secondary-500/10 to-accent-500/10 text-secondary-600 font-bold' : 'text-gray-700 hover:bg-white/10'
+              } px-4 py-2 rounded-xl transition-all duration-300 font-semibold`}
             >
               Contact
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-3">
             <Link
               to="/cart"
-              className="relative p-2 text-gray-700 hover:text-secondary-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="relative p-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all duration-300 hover:scale-105"
             >
               <ShoppingCart className="w-5 h-5" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-secondary-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                <span className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-secondary-500 to-accent-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg animate-glow">
                   {totalItems}
                 </span>
               )}
             </Link>
             {user ? (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <Link
                   to="/dashboard"
-                  className="flex items-center space-x-1 px-4 py-2 text-sm text-gray-700 hover:text-secondary-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-white/10 rounded-xl transition-all duration-300 font-semibold"
                 >
                   <LayoutDashboard className="w-4 h-4" />
-                  <span>Tableau de bord</span>
+                  <span>Dashboard</span>
                 </Link>
                 <Link
                   to="/profile"
-                  className="flex items-center space-x-2 text-sm text-gray-700 hover:text-secondary-600 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 text-sm px-4 py-2 glass-effect text-gray-700 hover:bg-white/20 rounded-xl transition-all duration-300 font-semibold"
                 >
                   <User className="w-5 h-5" />
-                  <span className="font-medium">{user.prenom}</span>
+                  <span className="font-semibold">{user.prenom}</span>
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center space-x-1 px-4 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-semibold"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Déconnexion</span>
+                  <span>Quitter</span>
                 </button>
               </div>
             ) : (
               <Link
                 to="/auth/login"
-                className="flex items-center space-x-1 px-4 py-2 text-sm bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-lg hover:from-secondary-600 hover:to-accent-600 transition-all"
+                className="flex items-center space-x-2 px-6 py-3 text-sm bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-xl hover:from-secondary-600 hover:to-accent-600 transition-all duration-300 font-bold shadow-lg hover:shadow-xl hover:scale-105"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Connexion</span>
@@ -129,7 +129,7 @@ const Navbar = () => {
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100"
+            className="md:hidden p-3 rounded-xl text-gray-700 hover:bg-white/10 transition-all duration-300"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -137,30 +137,30 @@ const Navbar = () => {
       </div>
 
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200">
-          <div className="px-4 py-3 space-y-3">
+        <div className="md:hidden glass-effect border-t border-white/10 animate-fadeIn">
+          <div className="px-4 py-4 space-y-2">
             <Link
               to="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="block px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
             >
               Accueil
             </Link>
             <Link
               to="/events"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="block px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
             >
               Événements
             </Link>
             <Link
               to="/cart"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
             >
               <span>Panier</span>
               {totalItems > 0 && (
-                <span className="ml-2 w-6 h-6 bg-secondary-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                <span className="ml-2 w-7 h-7 bg-gradient-to-r from-secondary-500 to-accent-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg">
                   {totalItems}
                 </span>
               )}
@@ -170,21 +170,21 @@ const Navbar = () => {
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="block px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
                 >
-                  Tableau de bord
+                  Dashboard
                 </Link>
                 <Link
                   to="/my-tickets"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="block px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
                 >
                   Mes Billets
                 </Link>
                 <Link
                   to="/profile"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  className="block px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
                 >
                   Mon Profil
                 </Link>
@@ -193,26 +193,26 @@ const Navbar = () => {
             <Link
               to="/about"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="block px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
             >
               À propos
             </Link>
             <Link
               to="/contact"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="block px-4 py-3 text-gray-700 hover:bg-white/10 rounded-xl transition-all font-semibold"
             >
               Contact
             </Link>
-            <div className="border-t border-gray-200 pt-3">
+            <div className="border-t border-white/10 pt-3 mt-2">
               {user ? (
                 <div className="space-y-2">
-                  <div className="px-3 py-2 text-sm text-gray-600">
-                    Connecté en tant que <span className="font-semibold">{user.prenom}</span>
+                  <div className="px-4 py-3 text-sm text-gray-600 font-semibold">
+                    Connecté: <span className="gradient-text">{user.prenom}</span>
                   </div>
                   <button
                     onClick={handleSignOut}
-                    className="w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 rounded-lg"
+                    className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 rounded-xl transition-all font-semibold"
                   >
                     Déconnexion
                   </button>
@@ -221,7 +221,7 @@ const Navbar = () => {
                 <Link
                   to="/auth/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-center bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-lg"
+                  className="block px-4 py-3 text-center bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-xl font-bold hover:scale-105 transition-all duration-300 shadow-lg"
                 >
                   Connexion
                 </Link>
