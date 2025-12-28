@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-interface CartItem {
+// Définition des types
+export type CartItem = {
   eventId: string;
   eventTitle: string;
   eventDate: string;
@@ -9,81 +10,77 @@ interface CartItem {
   ticketTypeName: string;
   price: number;
   quantity: number;
-}
+};
 
-interface CartContextType {
-  items: CartItem[];
+type CartContextType = {
+  cart: CartItem[];
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
   removeFromCart: (ticketTypeId: string) => void;
-  updateQuantity: (ticketTypeId: string, quantity: number) => void;
+  updateQuantity: (ticketTypeId: string, delta: number) => void;
   clearCart: () => void;
-  totalItems: number;
-  totalPrice: number;
-}
+  total: number;
+};
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
+  // 1. CHARGEMENT : On regarde si un panier existe déjà dans la mémoire
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    const savedCart = localStorage.getItem('cart');
+    return savedCart ? JSON.parse(savedCart) : [];
   });
 
+  // 2. SAUVEGARDE : Dès que le panier change, on l'écrit dans la mémoire
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
-  }, [items]);
+    localStorage.setItem('cart', JSON.stringify(cart));
+  }, [cart]);
 
-  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
-    setItems((prevItems) => {
-      const existingItem = prevItems.find((i) => i.ticketTypeId === item.ticketTypeId);
+  const addToCart = (newItem: Omit<CartItem, 'quantity'>) => {
+    setCart((currentCart) => {
+      const existingItem = currentCart.find(
+        (item) => item.ticketTypeId === newItem.ticketTypeId
+      );
 
       if (existingItem) {
-        return prevItems.map((i) =>
-          i.ticketTypeId === item.ticketTypeId
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
+        return currentCart.map((item) =>
+          item.ticketTypeId === newItem.ticketTypeId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
         );
       }
 
-      return [...prevItems, { ...item, quantity: 1 }];
+      return [...currentCart, { ...newItem, quantity: 1 }];
     });
   };
 
   const removeFromCart = (ticketTypeId: string) => {
-    setItems((prevItems) => prevItems.filter((i) => i.ticketTypeId !== ticketTypeId));
+    setCart((currentCart) =>
+      currentCart.filter((item) => item.ticketTypeId !== ticketTypeId)
+    );
   };
 
-  const updateQuantity = (ticketTypeId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(ticketTypeId);
-      return;
-    }
-
-    setItems((prevItems) =>
-      prevItems.map((i) =>
-        i.ticketTypeId === ticketTypeId ? { ...i, quantity } : i
-      )
+  const updateQuantity = (ticketTypeId: string, delta: number) => {
+    setCart((currentCart) =>
+      currentCart.map((item) => {
+        if (item.ticketTypeId === ticketTypeId) {
+          const newQuantity = Math.max(0, item.quantity + delta);
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      }).filter((item) => item.quantity > 0)
     );
   };
 
   const clearCart = () => {
-    setItems([]);
+    setCart([]);
+    localStorage.removeItem('cart');
   };
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
     <CartContext.Provider
-      value={{
-        items,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        totalItems,
-        totalPrice,
-      }}
+      value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, total }}
     >
       {children}
     </CartContext.Provider>

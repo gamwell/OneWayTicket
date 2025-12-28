@@ -1,167 +1,128 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Calendar, Search, Filter } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import type { Event, Category } from '../types/database';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import React from 'react';
+import { Calendar, MapPin, Tag, ArrowRight, Star } from 'lucide-react';
 
-const EventsPage = () => {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+const events = [
+  { id: 1, title: "Festival Aurore Sonore", date: "28 Janv 2026", location: "Marseille", price: "45€", category: "Musique", color: "#f59e0b" },
+  { id: 2, title: "Nuit de l'Innovation", date: "11 Fév 2026", location: "Paris Station F", price: "Gratuit", category: "Tech", color: "#10b981" },
+  { id: 3, title: "Gala des Arts", date: "05 Mars 2026", location: "Lyon", price: "25€", category: "Art", color: "#ec4899" },
+];
 
-  useEffect(() => {
-    fetchCategories();
-    fetchEvents();
-  }, [selectedCategory]);
-
-  const fetchCategories = async () => {
-    const { data } = await supabase
-      .from('categories')
-      .select('*')
-      .order('nom');
-
-    if (data) setCategories(data);
-  };
-
-  const fetchEvents = async () => {
-    setLoading(true);
-    let query = supabase
-      .from('events')
-      .select('*, category:categories(*)')
-      .eq('statut', 'publie')
-      .gte('date_debut', new Date().toISOString())
-      .order('date_debut', { ascending: true });
-
-    if (selectedCategory) {
-      query = query.eq('category_id', selectedCategory);
-    }
-
-    const { data } = await query;
-
-    if (data) setEvents(data);
-    setLoading(false);
-  };
-
-  const filteredEvents = events.filter((event) =>
-    event.titre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.ville.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
+export default function EventsPage() {
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-display font-bold text-gray-900 mb-4">Événements</h1>
-          <p className="text-lg text-gray-600">Découvrez tous les événements disponibles</p>
-        </div>
+    <div style={{ 
+      minHeight: '100vh', 
+      // DÉGRADÉ DEMANDÉ : Orange, Rosé, Bleu vers Vert
+      background: 'linear-gradient(135deg, #f59e0b 0%, #fb7185 25%, #4338ca 60%, #10b981 100%)',
+      padding: '60px 20px',
+      color: 'white',
+      fontFamily: 'sans-serif'
+    }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* En-tête avec Glassmorphism léger */}
+        <header style={{ 
+          textAlign: 'center', 
+          marginBottom: '60px',
+          padding: '40px',
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '30px',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
+        }}>
+          <h1 style={{ fontSize: '48px', fontWeight: '900', marginBottom: '15px', letterSpacing: '-1px' }}>
+            Explorer les <span style={{ color: '#fb7185' }}>Événements</span>
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '18px', fontWeight: '500' }}>
+            Vivez des moments uniques sous de nouvelles couleurs.
+          </p>
+        </header>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher un événement, une ville..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
-              />
-            </div>
+        {/* Grille d'événements */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+          gap: '30px' 
+        }}>
+          {events.map((event) => (
+            <div key={event.id} style={{ 
+              backgroundColor: 'rgba(15, 23, 42, 0.6)', 
+              backdropFilter: 'blur(20px)',
+              borderRadius: '28px',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              overflow: 'hidden',
+              transition: 'transform 0.3s ease',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+            }}>
+              {/* Image de fond dégradée pour chaque carte */}
+              <div style={{ 
+                height: '200px', 
+                background: `linear-gradient(135deg, ${event.color} 0%, rgba(0,0,0,0.4) 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
+              }}>
+                <div style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(255,255,255,0.2)', padding: '8px', borderRadius: '50%' }}>
+                   <Star size={18} fill="white" />
+                </div>
+                <Tag style={{ width: '60px', height: '60px', opacity: 0.4 }} />
+              </div>
 
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent appearance-none"
-              >
-                <option value="">Toutes les catégories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+              <div style={{ padding: '30px' }}>
+                <div style={{ 
+                  display: 'inline-block', 
+                  padding: '6px 14px', 
+                  borderRadius: '12px', 
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  color: event.color,
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  marginBottom: '20px',
+                  border: `1px solid ${event.color}`
+                }}>
+                  {event.category}
+                </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-                <div className="h-48 bg-gray-300"></div>
-                <div className="p-6 space-y-3">
-                  <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                  <div className="h-3 bg-gray-300 rounded w-1/2"></div>
-                  <div className="h-3 bg-gray-300 rounded w-full"></div>
+                <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '15px' }}>{event.title}</h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: 'rgba(255,255,255,0.7)', fontSize: '15px', marginBottom: '25px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Calendar size={18} style={{ color: '#fb7185' }} /> {event.date}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <MapPin size={18} style={{ color: '#10b981' }} /> {event.location}
+                  </div>
+                </div>
+
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  borderTop: '1px solid rgba(255,255,255,0.1)', 
+                  paddingTop: '25px' 
+                }}>
+                  <span style={{ fontSize: '26px', fontWeight: '900' }}>{event.price}</span>
+                  <button style={{ 
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    border: 'none',
+                    background: 'linear-gradient(to right, #f59e0b, #fb7185)',
+                    color: 'white',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    boxShadow: '0 10px 20px rgba(251, 113, 133, 0.3)'
+                  }}>
+                    Réserver <ArrowRight size={18} />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : filteredEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {filteredEvents.map((event) => (
-              <Link
-                key={event.id}
-                to={`/events/${event.id}`}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow"
-              >
-                <div className="relative h-48 bg-gradient-to-br from-gray-200 to-gray-300">
-                  {event.image_urls && event.image_urls.length > 0 ? (
-                    <img
-                      src={event.image_urls[0]}
-                      alt={event.titre}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Calendar className="w-16 h-16 text-gray-400" />
-                    </div>
-                  )}
-                  {event.category && (
-                    <div
-                      className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold text-white"
-                      style={{ backgroundColor: event.category.couleur }}
-                    >
-                      {event.category.nom}
-                    </div>
-                  )}
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">
-                    {event.titre}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2">
-                    {format(new Date(event.date_debut), "d MMMM yyyy 'à' HH'h'mm", { locale: fr })}
-                  </p>
-                  <p className="text-sm text-gray-600 flex items-center space-x-1">
-                    <span>{event.lieu}</span>
-                    <span>•</span>
-                    <span>{event.ville}</span>
-                  </p>
-                  <p className="text-sm text-gray-500 mt-3 line-clamp-2">
-                    {event.description}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-white rounded-lg shadow-md">
-            <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">Aucun événement trouvé</p>
-            <p className="text-sm text-gray-500">Essayez de modifier vos critères de recherche</p>
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
-};
-
-export default EventsPage;
+}

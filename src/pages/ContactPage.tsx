@@ -1,184 +1,130 @@
-import { Mail, Phone, MapPin, Send } from 'lucide-react';
-import { useState } from 'react';
-import toast from 'react-hot-toast';
+import React, { useState } from 'react';
+import { Mail, Phone, MapPin, Send, MessageSquare } from 'lucide-react';
 
-const ContactPage = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-  });
+export default function ContactPage() {
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     setTimeout(() => {
-      toast.success('Message envoyé avec succès !');
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      alert("Message envoyé avec succès ! Nous vous répondrons bientôt.");
       setLoading(false);
-    }, 1000);
+    }, 1500);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-display font-bold text-gray-900 mb-4">Contactez-nous</h1>
-          <p className="text-lg text-gray-600">
-            Une question ? Une suggestion ? Nous sommes là pour vous aider.
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'linear-gradient(135deg, #1e1b4b 0%, #111827 100%)', 
+      padding: '60px 20px',
+      color: 'white',
+      fontFamily: 'sans-serif'
+    }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+        
+        <header style={{ textAlign: 'center', marginBottom: '60px' }}>
+          <h1 style={{ fontSize: '42px', fontWeight: '800', marginBottom: '15px' }}>
+            Besoin d'<span style={{ color: '#10b981' }}>aide</span> ?
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '18px' }}>
+            Notre équipe est à votre écoute pour toute question.
           </p>
-        </div>
+        </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-display font-bold text-gray-900 mb-6">Envoyez-nous un message</h2>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Nom complet *
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
-                    placeholder="Jean Dupont"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
-                    placeholder="jean.dupont@email.com"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                    Sujet *
-                  </label>
-                  <input
-                    id="subject"
-                    type="text"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"
-                    placeholder="Objet de votre message"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                    Message *
-                  </label>
-                  <textarea
-                    id="message"
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    required
-                    rows={6}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent resize-none"
-                    placeholder="Votre message..."
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-lg font-semibold hover:from-secondary-600 hover:to-accent-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-5 h-5" />
-                  <span>{loading ? 'Envoi...' : 'Envoyer le message'}</span>
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center">
-                    <Mail className="w-6 h-6 text-secondary-600" />
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
+          gap: '40px' 
+        }}>
+          
+          {/* Colonne 1 : Infos de contact (Style Orange) */}
+          <div style={{ spaceY: '30px' }}>
+            <div style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+              padding: '30px', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.1)' 
+            }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <MessageSquare style={{ color: '#f59e0b' }} /> Coordonnées
+              </h2>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '12px' }}>
+                    <Mail style={{ color: '#f59e0b' }} size={20} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Email</p>
+                    <p style={{ fontSize: '16px', fontWeight: '600' }}>contact@onewayticket.com</p>
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Email</h3>
-                  <p className="text-sm text-gray-600 mb-2">Support client</p>
-                  <a
-                    href="mailto:support@onewayticket.fr"
-                    className="text-secondary-600 hover:text-secondary-700 text-sm block"
-                  >
-                    support@onewayticket.fr
-                  </a>
-                  <p className="text-sm text-gray-600 mt-2">Contact général</p>
-                  <a
-                    href="mailto:contact@onewayticket.fr"
-                    className="text-secondary-600 hover:text-secondary-700 text-sm block"
-                  >
-                    contact@onewayticket.fr
-                  </a>
-                </div>
-              </div>
-            </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center">
-                    <Phone className="w-6 h-6 text-accent-600" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px' }}>
+                    <Phone style={{ color: '#10b981' }} size={20} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Téléphone</p>
+                    <p style={{ fontSize: '16px', fontWeight: '600' }}>+33 1 23 45 67 89</p>
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Téléphone</h3>
-                  <a href="tel:+33123456789" className="text-secondary-600 hover:text-secondary-700">
-                    +33 1 23 45 67 89
-                  </a>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Lun-Ven: 9h-18h
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-primary-600" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px' }}>
+                    <MapPin style={{ color: '#3b82f6' }} size={20} />
                   </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Adresse</h3>
-                  <p className="text-gray-600">
-                    123 Avenue des Événements<br />
-                    75001 Paris<br />
-                    France
-                  </p>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Bureau</p>
+                    <p style={{ fontSize: '16px', fontWeight: '600' }}>Paris, Station F</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Colonne 2 : Formulaire (Style Vert) */}
+          <form onSubmit={handleSubmit} style={{ 
+            backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+            backdropFilter: 'blur(10px)',
+            padding: '40px', borderRadius: '24px', 
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex', flexDirection: 'column', gap: '20px'
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Nom</label>
+                <input type="text" required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Prénom</label>
+                <input type="text" required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Email</label>
+              <input type="email" required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Message</label>
+              <textarea rows={4} required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none', resize: 'none' }}></textarea>
+            </div>
+
+            <button type="submit" disabled={loading} style={{ 
+              backgroundColor: '#10b981', 
+              color: '#1e1b4b', 
+              padding: '14px', borderRadius: '12px', 
+              border: 'none', fontWeight: 'bold', fontSize: '16px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+              transition: 'all 0.3s'
+            }}>
+              {loading ? "Envoi..." : "Envoyer le message"} <Send size={18} />
+            </button>
+          </form>
+
         </div>
       </div>
     </div>
   );
-};
-
-export default ContactPage;
+}
