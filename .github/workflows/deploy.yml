@@ -38,4 +38,4 @@ jobs:
           
           # C'est ici que nous avons mis vos bons dossiers :
           local-dir: ./dist/
-          server-dir: /home/rzpvmoglsd/public_html/
+        
