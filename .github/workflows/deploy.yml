@@ -8,18 +8,18 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       # 1. Récupérer le code
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       # 2. Installer Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
+      
       # 3. Construire le site (Génère le dossier dist)
       - name: Build Project
         run: |
@@ -27,15 +27,13 @@ jobs:
           npm run build
         env:
           CI: false
-
+      
       # 4. Envoyer les fichiers via FTP
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: 66.29.148.131
+          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          
-          # LE RÉGLAGE CORRIGÉ (Chemin court)
           local-dir: ./dist/
-          server-dir: ./public_html/
+          server-dir: /public_html/
