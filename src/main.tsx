@@ -1,3 +1,5 @@
+console.log("Mon URL :", import.meta.env.VITE_SUPABASE_URL)
+console.log("Ma Clé est chargée :", !!import.meta.env.VITE_SUPABASE_ANON_KEY)
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
