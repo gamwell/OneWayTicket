@@ -36,6 +36,6 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           # ⚠️ IMPORTANT : Mettez './dist/' pour Vite OU './build/' pour Create-React-App
-          local-dir: ./build/ 
+          local-dir: ./dist/ 
           # Où mettre le site sur le serveur (public_html est la racine du web)
-          server-dir: ./public_html/
+          server-dir: /home/rzpvmoglsd/public_html/
