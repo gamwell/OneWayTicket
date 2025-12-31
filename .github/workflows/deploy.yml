@@ -10,17 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Récupérer le code
       - name: Checkout code
         uses: actions/checkout@v4
       
-      # 2. Installer Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
       
-      # 3. Construire le site (Génère le dossier dist)
       - name: Build Project
         run: |
           npm install
@@ -28,7 +25,6 @@ jobs:
         env:
           CI: false
       
-      # 4. Envoyer les fichiers via FTP
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -36,4 +32,4 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: home/quarksydigital.com
+          server-dir: /home/quarksydigital.com/  # ← Changement ici !
