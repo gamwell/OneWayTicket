@@ -1,36 +1,40 @@
+// src/pages/admin/UserManagerPage.tsx
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
-// Typage corrigé : on définit d'abord le Profil
-type Profile = {
-  id: string; // ID du profil
-  user_id: string; // Lien vers auth.users
-  role: string;
-  full_name: string | null;
-  status_verification: string | null;
-  profile_type: string | null;
-  is_admin: boolean;
-  // Optionnel : si vous avez besoin de l'email et que vous l'avez dupliqué dans profiles
-  // sinon, Supabase ne permet pas de récupérer facilement l'email de auth.users via JS client
-  email?: string; 
+type UserRow = {
+  id: string;
+  email: string;
+  profiles?: {
+    role: string;
+    full_name?: string;
+    status_verification?: string;
+    profile_type?: string;
+    is_admin?: boolean;
+  };
 };
 
-const UserManagerPage = () => {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+function UserManagerPage() {
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadUsers = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("full_name", { ascending: true });
+    const { data } = await supabase
+      .from("users")
+      .select(`
+        id,
+        email,
+        profiles (
+          role,
+          full_name,
+          status_verification,
+          profile_type,
+          is_admin
+        )
+      `)
+      .order("email", { ascending: true });
 
-    if (error) {
-      console.error("Erreur lors du chargement:", error.message);
-    } else {
-      setProfiles(data || []);
-    }
+    setUsers((data || []) as UserRow[]);
     setLoading(false);
   };
 
@@ -38,22 +42,22 @@ const UserManagerPage = () => {
     loadUsers();
   }, []);
 
-  const updateRole = async (userId: string, newRole: string) => {
-    const { error } = await supabase
+  async function updateRole(userId: string, newRole: string) {
+    await supabase
       .from("profiles")
       .update({ role: newRole })
-      .eq("user_id", userId); // Utilisez l'identifiant correct (user_id ou id selon votre schéma)
+      .eq("user_id", userId);
 
-    if (!error) loadUsers();
-  };
+    loadUsers();
+  }
 
   const toggleAdmin = async (userId: string, current: boolean) => {
-    const { error } = await supabase
+    await supabase
       .from("profiles")
       .update({ is_admin: !current })
       .eq("user_id", userId);
 
-    if (!error) loadUsers();
+    loadUsers();
   };
 
   if (loading)
@@ -64,35 +68,8 @@ const UserManagerPage = () => {
       <h1 className="text-3xl font-bold mb-8">Gestion des utilisateurs</h1>
 
       <div className="space-y-4">
-        {profiles.map((p) => (
+        {users.map((u) => (
           <div
-            key={p.id}
-            className="p-4 bg-slate-800 rounded-lg flex items-center justify-between border border-slate-700"
-          >
-            <div>
-              <p className="font-semibold">{p.full_name || "Utilisateur sans nom"}</p>
-              <p className="text-sm text-slate-400">Rôle : {p.role} | Type : {p.profile_type}</p>
-            </div>
-
-            <div className="flex gap-2">
-              <button 
-                onClick={() => updateRole(p.user_id, p.role === 'admin' ? 'user' : 'admin')}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm transition"
-              >
-                Changer Rôle
-              </button>
-              <button 
-                onClick={() => toggleAdmin(p.user_id, p.is_admin)}
-                className={`px-3 py-1 rounded text-sm transition ${p.is_admin ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'}`}
-              >
-                {p.is_admin ? "Retirer Admin" : "Rendre Admin"}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-export default UserManagerPage;
+            key={u.id} />))}
+      </></>);
+}
