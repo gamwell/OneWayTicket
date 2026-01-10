@@ -46,10 +46,11 @@ export function getEventImage(category: string): string {
   if (!category) return EVENT_IMAGES.default[0];
 
   let cleanCategory = category.toLowerCase().trim();
+  // Suppression des accents
   cleanCategory = cleanCategory.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   let images = EVENT_IMAGES[cleanCategory];
-  
+
   if (!images) {
     const key = Object.keys(EVENT_IMAGES).find(k => cleanCategory.includes(k));
     images = key ? EVENT_IMAGES[key] : EVENT_IMAGES.default;
