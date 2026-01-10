@@ -1,5 +1,3 @@
-// src/utils/eventimages.ts
-
 // Mapping des catégories vers des images Unsplash
 const EVENT_IMAGES: Record<string, string[]> = {
   tech: [
@@ -19,31 +17,24 @@ const EVENT_IMAGES: Record<string, string[]> = {
   voyage: [
     "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=800"
   ],
-  
-  // ✅ CORRECTION ICI (Exposition)
   exposition: [
-    "https://images.unsplash.com/photo-1536924940846-227afb31e2a5?auto=format&fit=crop&q=80&w=800", 
-    "https://images.unsplash.com/photo-1554907984-15263bfd63bd?auto=format&fit=crop&q=80&w=800" // Lien remplacé (Art Gallery)
+    "https://images.unsplash.com/photo-1536924940846-227afb31e2a5?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1554907984-15263bfd63bd?auto=format&fit=crop&q=80&w=800"
   ],
-  
-  // ✅ CORRECTION ICI (Festival)
   festival: [
-    "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=800", // Lien remplacé (Concert Outdoor)
+    "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=800",
     "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=800"
   ],
-  
-  // ✅ CORRECTION ICI (Conférence)
   conference: [
-    "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=800", 
-    "https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800"  // Lien remplacé (Meeting room)
+    "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800"
   ],
-  
   itech: [
     "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800",
     "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&q=80&w=800"
   ],
   autre: [
-    "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=800", 
+    "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=800",
     "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&q=80&w=800"
   ],
   default: [
@@ -60,8 +51,8 @@ export function getEventImage(category: string): string {
   let images = EVENT_IMAGES[cleanCategory];
   
   if (!images) {
-      const key = Object.keys(EVENT_IMAGES).find(k => cleanCategory.includes(k));
-      images = key ? EVENT_IMAGES[key] : EVENT_IMAGES.default;
+    const key = Object.keys(EVENT_IMAGES).find(k => cleanCategory.includes(k));
+    images = key ? EVENT_IMAGES[key] : EVENT_IMAGES.default;
   }
 
   const randomIndex = Math.floor(Math.random() * images.length);
