@@ -1,227 +1,210 @@
-import { useState, useEffect } from 'react';
-import { User, Mail, Phone, Save, Edit2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase"; // Assurez-vous que le chemin est bon
+import { useNavigate, Navigate } from "react-router-dom";
+import { UserRoundCog, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 const ProfilePage = () => {
-  const { user: authUser } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    nom: '',
-    prenom: '',
-    email: '',
-    telephone: '',
-  });
+  // On récupère 'user' et 'loading' du contexte auth
+  const { user, loading: authLoading } = useAuth(); 
+  const navigate = useNavigate();
 
+  // État local de la page
+  const [loading, setLoading] = useState(false); // Pour l'envoi du formulaire
+  const [fetching, setFetching] = useState(true); // Pour le chargement initial des données
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Champs du formulaire
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+
+  // --- 1. CHARGEMENT OPTIMISÉ (Non-bloquant) ---
   useEffect(() => {
-    if (authUser) {
-      fetchUserProfile();
-    }
-  }, [authUser]);
+    let mounted = true;
 
-  const fetchUserProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser?.id)
-        .single();
+    const getProfileData = async () => {
+      // Si l'auth global charge encore, on attend
+      if (authLoading) return;
 
-      if (error) throw error;
-
-      if (data) {
-        setFormData({
-          nom: data.nom || '',
-          prenom: data.prenom || '',
-          email: data.email || '',
-          telephone: data.telephone || '',
-        });
+      // Si pas d'utilisateur après chargement auth, on arrête (le redirect se fera plus bas)
+      if (!user) {
+        if (mounted) setFetching(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      toast.error('Erreur lors du chargement du profil');
-    }
-  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+      try {
+        if (mounted) setEmail(user.email || "");
+
+        // A. On tente de récupérer les données fraîches de la table 'user_profiles'
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+
+        if (mounted) {
+          if (data && data.full_name) {
+            // Priorité 1 : Données de la base de données
+            setFullName(data.full_name);
+          } else {
+            // Priorité 2 : Métadonnées Auth (fallback)
+            setFullName(user.user_metadata?.full_name || "");
+          }
+        }
+      } catch (err) {
+        console.error("Erreur chargement profil:", err);
+      } finally {
+        if (mounted) setFetching(false);
+      }
+    };
+
+    getProfileData();
+
+    // Cleanup function
+    return () => { mounted = false; };
+  }, [user, authLoading]);
+
+
+  // --- 2. REDIRECTION DE SÉCURITÉ ---
+  if (!fetching && !authLoading && !user) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
+
+  // --- 3. MISE À JOUR DU PROFIL ---
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
+    setMessage(null);
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          nom: formData.nom,
-          prenom: formData.prenom,
-          telephone: formData.telephone,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', authUser?.id);
+      // A. Mise à jour des MetaData Auth (Supabase Auth)
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { full_name: fullName },
+      });
+      if (authError) throw authError;
 
-      if (error) throw error;
+      // B. Mise à jour de la table 'user_profiles' (Base de données)
+      const { error: dbError } = await supabase
+        .from("user_profiles")
+        .upsert({ 
+          id: user?.id, // Important pour le upsert
+          full_name: fullName,
+          updated_at: new Date().toISOString()
+        });
+      
+      if (dbError) throw dbError;
 
-      toast.success('Profil mis à jour avec succès');
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Erreur lors de la mise à jour');
+      setMessage({
+        type: "success",
+        text: "Profil mis à jour avec succès !",
+      });
+
+      // Petit délai avant redirection (optionnel)
+      setTimeout(() => {
+        // Optionnel : recharger la page ou rediriger
+        // navigate("/dashboard"); 
+      }, 1500);
+
+    } catch (error: any) {
+      console.error("Erreur update:", error);
+      setMessage({ 
+        type: "error", 
+        text: error.message || "Une erreur est survenue lors de la mise à jour." 
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  // --- 4. ÉCRAN DE CHARGEMENT ---
+  if (fetching || authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-12 h-12 text-pink-500 animate-spin" />
+        <p className="text-slate-400 font-bold animate-pulse uppercase tracking-widest text-xs">
+          Synchronisation du profil...
+        </p>
+      </div>
+    );
+  }
+
+  // --- 5. INTERFACE PRINCIPALE ---
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="bg-gradient-to-r from-secondary-500 to-accent-500 h-32"></div>
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#312e81] text-white pt-24 px-4 pb-12">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+          
+          {/* Décoration de fond */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 blur-3xl rounded-full pointer-events-none"></div>
 
-          <div className="relative px-8 pb-8">
-            <div className="absolute -top-16 left-8">
-              <div className="w-32 h-32 bg-white rounded-full border-4 border-white shadow-lg flex items-center justify-center">
-                <div className="w-28 h-28 bg-gradient-to-br from-secondary-100 to-accent-100 rounded-full flex items-center justify-center">
-                  <User className="w-14 h-14 text-secondary-600" />
-                </div>
-              </div>
+          <div className="flex flex-col md:flex-row items-center gap-6 mb-10 border-b border-white/10 pb-8 relative z-10">
+            <div className="w-24 h-24 bg-gradient-to-tr from-pink-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-2xl rotate-3">
+              <UserRoundCog className="w-12 h-12 text-white" strokeWidth={2} />
+            </div>
+            <div className="text-center md:text-left">
+              <h1 className="text-4xl font-black tracking-tighter italic uppercase">Mon Profil</h1>
+              <p className="text-slate-400 font-medium">Paramètres du compte & sécurité</p>
+            </div>
+          </div>
+
+          {message && (
+            <div
+              className={`p-4 rounded-2xl mb-8 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${
+                message.type === "success"
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  : "bg-red-500/20 text-red-300 border border-red-500/30"
+              }`}
+            >
+              {message.type === "success" ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+              <span className="font-bold text-sm">{message.text}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleUpdateProfile} className="space-y-8 relative z-10">
+            {/* Email (Lecture seule) */}
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] ml-1">
+                Identifiant Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                disabled
+                className="w-full bg-black/40 border border-white/5 rounded-2xl px-5 py-4 text-slate-500 cursor-not-allowed font-medium italic outline-none"
+              />
             </div>
 
-            <div className="pt-20 flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
-                  {formData.prenom} {formData.nom}
-                </h1>
-                <p className="text-gray-600">{formData.email}</p>
-              </div>
+            {/* Nom complet */}
+            <div className="space-y-2">
+              <label className="block text-xs font-black text-slate-300 uppercase tracking-[0.2em] ml-1">
+                Nom d'affichage
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Votre nom ou pseudonyme"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 transition-all font-bold placeholder:text-slate-600"
+                required
+              />
+            </div>
 
-              {!isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center space-x-2 px-4 py-2 text-secondary-600 hover:bg-secondary-50 rounded-lg transition-colors"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  <span>Modifier</span>
-                </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-5 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 font-black text-white uppercase tracking-tighter text-lg shadow-xl shadow-pink-500/20 hover:shadow-pink-500/40 transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 flex justify-center items-center gap-3"
+            >
+              {loading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                "Enregistrer les modifications"
               )}
-            </div>
+            </button>
+          </form>
 
-            <div className="mt-8">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Prénom *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.prenom}
-                      onChange={(e) => setFormData({ ...formData, prenom: e.target.value })}
-                      disabled={!isEditing}
-                      required
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent ${
-                        !isEditing ? 'bg-gray-50 cursor-not-allowed' : ''
-                      }`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nom *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nom}
-                      onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                      disabled={!isEditing}
-                      required
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent ${
-                        !isEditing ? 'bg-gray-50 cursor-not-allowed' : ''
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="email"
-                      value={formData.email}
-                      disabled
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    L'email ne peut pas être modifié
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Téléphone
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="tel"
-                      value={formData.telephone}
-                      onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
-                      disabled={!isEditing}
-                      className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent ${
-                        !isEditing ? 'bg-gray-50 cursor-not-allowed' : ''
-                      }`}
-                      placeholder="+33 6 12 34 56 78"
-                    />
-                  </div>
-                </div>
-
-                {isEditing && (
-                  <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(false);
-                        fetchUserProfile();
-                      }}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-lg font-semibold hover:from-secondary-600 hover:to-accent-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-5 h-5" />
-                      <span>{loading ? 'Enregistrement...' : 'Enregistrer'}</span>
-                    </button>
-                  </div>
-                )}
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-display font-bold text-gray-900 mb-4">Statistiques</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-secondary-600">0</p>
-              <p className="text-sm text-gray-600 mt-1">Billets achetés</p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-accent-600">0</p>
-              <p className="text-sm text-gray-600 mt-1">Événements à venir</p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-primary-600">0</p>
-              <p className="text-sm text-gray-600 mt-1">Favoris</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

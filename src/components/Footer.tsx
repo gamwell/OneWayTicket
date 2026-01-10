@@ -1,121 +1,82 @@
-import { Link } from 'react-router-dom';
-import { Ticket, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { ShieldCheck, Instagram, Twitter, Facebook, Ticket } from "lucide-react";
 
 const Footer = () => {
-  const currentYear = new Date().getFullYear();
-
   return (
-    <footer className="bg-gray-900 text-gray-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-secondary-500 to-accent-500 rounded-lg flex items-center justify-center">
-                <Ticket className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-xl font-display font-bold text-white">ONEWAYTICKET</span>
+    <footer className="relative z-10 bg-[#0f172a] border-t border-white/10 pt-16 pb-8 overflow-hidden">
+      {/* Effet d'aura en arrière-plan */}
+      <div className="absolute bottom-0 right-0 w-64 h-64 bg-pink-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+        
+        {/* --- COLONNE 1 : BRAND --- */}
+        <div className="md:col-span-2 space-y-6">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 bg-gradient-to-tr from-pink-500 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg group-hover:rotate-12 transition-all">
+              <span className="text-white font-black italic">O</span>
             </div>
-            <p className="text-sm text-gray-400">
-              Votre plateforme de billetterie événementielle moderne et sécurisée.
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              Propulsé par <span className="text-secondary-400 font-semibold">DigitBinary</span> - Shaping tomorrow, today
-            </p>
-          </div>
-
-          <div>
-            <h3 className="text-white font-semibold mb-4">Navigation</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/" className="hover:text-secondary-400 transition-colors text-sm">
-                  Accueil
-                </Link>
-              </li>
-              <li>
-                <Link to="/events" className="hover:text-secondary-400 transition-colors text-sm">
-                  Événements
-                </Link>
-              </li>
-              <li>
-                <Link to="/about" className="hover:text-secondary-400 transition-colors text-sm">
-                  À propos
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className="hover:text-secondary-400 transition-colors text-sm">
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-white font-semibold mb-4">Légal</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/terms" className="hover:text-secondary-400 transition-colors text-sm">
-                  Conditions générales
-                </Link>
-              </li>
-              <li>
-                <Link to="/privacy" className="hover:text-secondary-400 transition-colors text-sm">
-                  Politique de confidentialité
-                </Link>
-              </li>
-              <li>
-                <Link to="/mentions" className="hover:text-secondary-400 transition-colors text-sm">
-                  Mentions légales
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-white font-semibold mb-4">Contact</h3>
-            <ul className="space-y-3">
-              <li className="flex items-center space-x-2 text-sm">
-                <Mail className="w-4 h-4 text-secondary-400" />
-                <a href="mailto:contact@onewayticket.fr" className="hover:text-secondary-400 transition-colors">
-                  contact@onewayticket.fr
-                </a>
-              </li>
-              <li className="flex items-center space-x-2 text-sm">
-                <Phone className="w-4 h-4 text-secondary-400" />
-                <a href="tel:+33123456789" className="hover:text-secondary-400 transition-colors">
-                  +33 1 23 45 67 89
-                </a>
-              </li>
-              <li className="flex items-start space-x-2 text-sm">
-                <MapPin className="w-4 h-4 text-secondary-400 mt-1 flex-shrink-0" />
-                <span>123 Avenue des Événements<br />75001 Paris, France</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-gray-400">
-            &copy; {currentYear} ONEWAYTICKET by DigitBinary. Tous droits réservés.
+            <span className="text-xl font-black tracking-tighter text-white uppercase italic">
+              ONEWAYTICKET
+            </span>
+          </Link>
+          <p className="text-slate-400 text-sm max-w-sm leading-relaxed">
+            La destination ultime pour vos billets d'exception. Vivez des moments inoubliables avec une gestion simplifiée et sécurisée. Le futur de vos souvenirs commence ici.
           </p>
-
-          <div className="flex items-center space-x-4 mt-4 md:mt-0">
-            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-400 transition-colors">
-              <Facebook className="w-5 h-5" />
-            </a>
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-400 transition-colors">
-              <Twitter className="w-5 h-5" />
-            </a>
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-400 transition-colors">
-              <Instagram className="w-5 h-5" />
-            </a>
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-400 transition-colors">
-              <Linkedin className="w-5 h-5" />
-            </a>
+          <div className="flex gap-4">
+            <SocialIcon icon={<Instagram size={18} />} />
+            <SocialIcon icon={<Twitter size={18} />} />
+            <SocialIcon icon={<Facebook size={18} />} />
           </div>
         </div>
+
+        {/* --- COLONNE 2 : LIENS --- */}
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Navigation</h3>
+          <ul className="space-y-4 text-sm font-medium text-slate-400">
+            <li><Link to="/events" className="hover:text-cyan-400 transition-colors flex items-center gap-2"><Ticket size={14} /> Événements</Link></li>
+            <li><Link to="/about" className="hover:text-cyan-400 transition-colors">À propos</Link></li>
+            <li><Link to="/contact" className="hover:text-cyan-400 transition-colors">Contact</Link></li>
+            <li><Link to="/profile-page" className="hover:text-cyan-400 transition-colors">Mon Compte</Link></li>
+          </ul>
+        </div>
+
+        {/* --- COLONNE 3 : CONFORMITÉ --- */}
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white mb-6">Conformité</h3>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+              <ShieldCheck size={16} /> RGPD Compliant
+            </div>
+            <p className="text-[10px] text-slate-500 leading-tight uppercase tracking-wider font-bold">
+              Vos données sont chiffrées et traitées selon les normes européennes en vigueur.
+            </p>
+            <div className="pt-2 flex flex-col gap-2 text-[10px] font-bold uppercase tracking-tighter text-slate-500">
+              <Link to="/legal/terms" className="hover:text-white transition-colors">CGU & CGV</Link>
+              <Link to="/legal/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* --- FOOTER BOTTOM --- */}
+      <div className="max-w-7xl mx-auto px-6 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.3em]">
+          © {new Date().getFullYear()} ONEWAYTICKET INC. TOUS DROITS RÉSERVÉS.
+        </p>
+        <p className="text-[10px] font-black italic text-slate-600 uppercase tracking-tighter">
+          DESIGNED FOR THE BOLD.
+        </p>
       </div>
     </footer>
   );
 };
+
+// Petit composant pour les icônes sociales
+const SocialIcon = ({ icon }: { icon: React.ReactNode }) => (
+  <a href="#" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white hover:text-slate-900 hover:scale-110 transition-all duration-300">
+    {icon}
+  </a>
+);
 
 export default Footer;

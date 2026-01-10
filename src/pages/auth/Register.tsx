@@ -1,149 +1,160 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, Mail, Lock, User } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Chrome, Loader2 } from 'lucide-react';
 
-export default function Register() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [prenom, setPrenom] = useState('');
+const Register = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
     setLoading(true);
+    
+    try {
+      // Inscription avec Supabase
+      // Le trigger SQL que nous avons configuré s'occupera d'insérer dans user_profiles
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { 
+            full_name: fullName 
+          },
+          // Redirection après confirmation mail (si activée)
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { prenom: prenom },
-        emailRedirectTo: `${window.location.origin}/login`,
-      },
-    });
+      if (error) throw error;
 
-    if (error) {
-      alert("Erreur : " + error.message);
-    } else {
-      alert("Inscription réussie ! Vérifiez vos e-mails pour confirmer votre compte.");
-      navigate('/auth/login');
+      alert("Inscription réussie ! Vérifiez vos emails pour confirmer votre compte.");
+      navigate("/auth/login"); // Correction du chemin vers login
+
+    } catch (error: any) {
+      alert("Erreur lors de l'inscription : " + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { 
+          // Utilisation de window.location.origin pour éviter les erreurs localhost:5173 fixes
+          redirectTo: `${window.location.origin}/auth/callback` 
+        }
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Erreur Google OAuth:", error.message);
+    }
   };
 
   return (
-    <div style={{ 
-      minHeight: '90vh', 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      background: 'linear-gradient(135deg, #fffcf0 0%, #e0e7ff 100%)', // Même fond chaud que Login
-      padding: '20px',
-      fontFamily: 'sans-serif'
-    }}>
-      <div style={{ 
-        backgroundColor: 'rgba(255, 255, 255, 0.8)', 
-        backdropFilter: 'blur(10px)', 
-        padding: '40px', 
-        borderRadius: '24px', 
-        boxShadow: '0 20px 40px rgba(0,0,0,0.05)', 
-        width: '100%', 
-        maxWidth: '420px',
-        border: '1px solid rgba(255, 255, 255, 0.5)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{ 
-            display: 'inline-flex', 
-            padding: '15px', 
-            borderRadius: '20px', 
-            background: 'linear-gradient(to bottom right, #f59e0b, #ef4444)', 
-            marginBottom: '15px' 
-          }}>
-            <UserPlus style={{ color: 'white', width: '30px', height: '30px' }} />
-          </div>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
-            Créer un compte
-          </h2>
-          <p style={{ color: '#6b7280', marginTop: '8px' }}>Rejoignez l'aventure ONEWAYTICKET</p>
-        </div>
+    <div className="min-h-[85vh] flex items-center justify-center px-6 relative overflow-hidden">
+      
+      {/* AURA VIOLETTE */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+
+      {/* CARTE GLASSMORPHISM */}
+      <div className="relative z-10 bg-[#1e293b]/60 backdrop-blur-xl p-10 rounded-[2.5rem] border border-white/10 w-full max-w-md shadow-2xl">
         
-        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>Prénom</label>
-            <div style={{ position: 'relative' }}>
-              <User style={{ position: 'absolute', left: '12px', top: '12px', width: '18px', color: '#9ca3af' }} />
-              <input
-                type="text"
-                required
-                placeholder="Votre prénom"
-                style={{ width: '100%', padding: '12px 12px 12px 40px', border: '1px solid #e5e7eb', borderRadius: '12px', outline: 'none' }}
-                value={prenom}
-                onChange={(e) => setPrenom(e.target.value)}
-              />
-            </div>
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-black text-white tracking-tighter mb-2">
+            CRÉER UN COMPTE
+          </h2>
+          <p className="text-slate-400 font-medium text-sm">Rejoignez l'aventure OneWayTicket</p>
+        </div>
+
+        <form onSubmit={handleRegister} className="space-y-4">
+          
+          {/* Champ Nom */}
+          <div className="relative">
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <input 
+              type="text" 
+              placeholder="Nom complet" 
+              className="w-full bg-[#0f172a]/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+            />
           </div>
 
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>Email</label>
-            <div style={{ position: 'relative' }}>
-              <Mail style={{ position: 'absolute', left: '12px', top: '12px', width: '18px', color: '#9ca3af' }} />
-              <input
-                type="email"
-                required
-                placeholder="votre@email.com"
-                style={{ width: '100%', padding: '12px 12px 12px 40px', border: '1px solid #e5e7eb', borderRadius: '12px', outline: 'none' }}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+          {/* Champ Email */}
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <input 
+              type="email" 
+              placeholder="Email" 
+              className="w-full bg-[#0f172a]/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
           
-          <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>Mot de passe</label>
-            <div style={{ position: 'relative' }}>
-              <Lock style={{ position: 'absolute', left: '12px', top: '12px', width: '18px', color: '#9ca3af' }} />
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                style={{ width: '100%', padding: '12px 12px 12px 40px', border: '1px solid #e5e7eb', borderRadius: '12px', outline: 'none' }}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+          {/* Champ Mot de passe */}
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <input 
+              type="password" 
+              placeholder="Mot de passe" 
+              className="w-full bg-[#0f172a]/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
 
-          <button
-            type="submit"
+          <button 
+            type="submit" 
             disabled={loading}
-            style={{ 
-              width: '100%', 
-              padding: '14px', 
-              background: 'linear-gradient(to right, #2563eb, #7c3aed)', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: '12px', 
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '16px',
-              marginTop: '10px',
-              boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)'
-            }}
+            className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-pink-500/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
           >
-            {loading ? "Création..." : "S'inscrire"}
+            {loading ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <>
+                S'inscrire <UserPlus size={20} />
+              </>
+            )}
           </button>
         </form>
 
-        <div style={{ marginTop: '25px', textAlign: 'center' }}>
-          <p style={{ fontSize: '14px', color: '#6b7280' }}>
-            Déjà inscrit ?{' '}
-            <Link to="/auth/login" style={{ color: '#f59e0b', fontWeight: 'bold', textDecoration: 'none' }}>
-              Se connecter
-            </Link>
-          </p>
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10"></span></div>
+          <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
+            <span className="bg-[#1e293b] px-4 text-slate-500 font-bold rounded-full">Ou</span>
+          </div>
         </div>
+
+        <button 
+          onClick={loginWithGoogle}
+          type="button"
+          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold text-white hover:bg-white hover:text-black transition-all active:scale-[0.98]"
+        >
+          <Chrome size={20} className="text-emerald-400" />
+          Continuer avec Google
+        </button>
+
+        <p className="mt-6 text-center text-slate-400 text-sm">
+          Déjà membre ?{' '}
+          <Link to="/auth/login" className="text-purple-400 font-bold hover:underline">
+            Se connecter
+          </Link>
+        </p>
       </div>
     </div>
   );
-}
+};
+
+export default Register;

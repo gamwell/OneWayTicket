@@ -1,129 +1,150 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, MessageSquare } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, MessageSquare, Loader2, Sparkles } from 'lucide-react';
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    // Simulation d'envoi
     setTimeout(() => {
-      alert("Message envoyé avec succès ! Nous vous répondrons bientôt.");
+      setSent(true);
       setLoading(false);
+      setTimeout(() => setSent(false), 5000); // Reset le message de succès après 5s
     }, 1500);
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #1e1b4b 0%, #111827 100%)', 
-      padding: '60px 20px',
-      color: 'white',
-      fontFamily: 'sans-serif'
-    }}>
-      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden pt-24 pb-12 px-6">
+      
+      {/* --- EFFETS DE FOND (Signature OneWayTicket) --- */}
+      <div className="fixed inset-0 z-[1] pointer-events-none opacity-[0.03]" 
+           style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }}></div>
+      
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[10%] left-[-5%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[10%] right-[-5%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+      </div>
+
+      <div className="max-w-6xl mx-auto relative z-10">
         
-        <header style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <h1 style={{ fontSize: '42px', fontWeight: '800', marginBottom: '15px' }}>
-            Besoin d'<span style={{ color: '#10b981' }}>aide</span> ?
+        {/* --- HEADER --- */}
+        <header className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 text-emerald-400">
+            <Sparkles size={14} /> Support Client
+          </div>
+          <h1 className="text-5xl md:text-6xl font-black italic tracking-tighter uppercase mb-4 leading-none">
+            Besoin d'<span className="text-emerald-400">aide</span> ?
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '18px' }}>
-            Notre équipe est à votre écoute pour toute question.
+          <p className="text-slate-400 font-medium max-w-xl mx-auto italic">
+            Une question sur un billet ou un événement ? Notre équipe de passionnés vous répond sous 24h.
           </p>
         </header>
 
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
-          gap: '40px' 
-        }}>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start">
           
-          {/* Colonne 1 : Infos de contact (Style Orange) */}
-          <div style={{ spaceY: '30px' }}>
-            <div style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.03)', 
-              padding: '30px', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.1)' 
-            }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <MessageSquare style={{ color: '#f59e0b' }} /> Coordonnées
+          {/* --- INFOS DE CONTACT (Col 2/5) --- */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] shadow-2xl">
+              <h2 className="text-xl font-black italic tracking-tighter uppercase mb-8 flex items-center gap-3">
+                <MessageSquare className="text-orange-400" /> Nos Coordonnées
               </h2>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '12px' }}>
-                    <Mail style={{ color: '#f59e0b' }} size={20} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Email</p>
-                    <p style={{ fontSize: '16px', fontWeight: '600' }}>contact@onewayticket.com</p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px' }}>
-                    <Phone style={{ color: '#10b981' }} size={20} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Téléphone</p>
-                    <p style={{ fontSize: '16px', fontWeight: '600' }}>+33 1 23 45 67 89</p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px' }}>
-                    <MapPin style={{ color: '#3b82f6' }} size={20} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>Bureau</p>
-                    <p style={{ fontSize: '16px', fontWeight: '600' }}>Paris, Station F</p>
-                  </div>
-                </div>
+              <div className="space-y-8">
+                <ContactInfo 
+                  icon={<Mail className="text-orange-400" />} 
+                  label="Email" 
+                  value="contact@onewayticket.com" 
+                  bgColor="bg-orange-400/10" 
+                />
+                <ContactInfo 
+                  icon={<Phone className="text-emerald-400" />} 
+                  label="Téléphone" 
+                  value="+33 1 23 45 67 89" 
+                  bgColor="bg-emerald-400/10" 
+                />
+                <ContactInfo 
+                  icon={<MapPin className="text-blue-400" />} 
+                  label="Bureau" 
+                  value="Paris, Station F" 
+                  bgColor="bg-blue-400/10" 
+                />
               </div>
+            </div>
+
+            {/* Petite carte décorative */}
+            <div className="bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-white/10 p-8 rounded-[2.5rem] italic">
+              <p className="text-sm font-medium text-slate-300">
+                "Nous ne vendons pas que des billets, nous ouvrons des portes vers vos plus beaux souvenirs."
+              </p>
             </div>
           </div>
 
-          {/* Colonne 2 : Formulaire (Style Vert) */}
-          <form onSubmit={handleSubmit} style={{ 
-            backgroundColor: 'rgba(255, 255, 255, 0.05)', 
-            backdropFilter: 'blur(10px)',
-            padding: '40px', borderRadius: '24px', 
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            display: 'flex', flexDirection: 'column', gap: '20px'
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Nom</label>
-                <input type="text" required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
+          {/* --- FORMULAIRE (Col 3/5) --- */}
+          <div className="lg:col-span-3">
+            <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[2.5rem] shadow-2xl space-y-6">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Nom</label>
+                  <input type="text" required className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-white outline-none focus:border-emerald-500/50 transition-all font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Prénom</label>
+                  <input type="text" required className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-white outline-none focus:border-emerald-500/50 transition-all font-bold" />
+                </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Prénom</label>
-                <input type="text" required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Email</label>
+                <input type="email" required className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-white outline-none focus:border-emerald-500/50 transition-all font-bold" />
               </div>
-            </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Email</label>
-              <input type="email" required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none' }} />
-            </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Message</label>
+                <textarea rows={4} required className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-5 text-white outline-none focus:border-emerald-500/50 transition-all font-bold resize-none"></textarea>
+              </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Message</label>
-              <textarea rows={4} required style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white', outline: 'none', resize: 'none' }}></textarea>
-            </div>
-
-            <button type="submit" disabled={loading} style={{ 
-              backgroundColor: '#10b981', 
-              color: '#1e1b4b', 
-              padding: '14px', borderRadius: '12px', 
-              border: 'none', fontWeight: 'bold', fontSize: '16px',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-              transition: 'all 0.3s'
-            }}>
-              {loading ? "Envoi..." : "Envoyer le message"} <Send size={18} />
-            </button>
-          </form>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                className="w-full py-5 rounded-2xl bg-emerald-500 text-slate-900 font-black uppercase tracking-tighter text-lg shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 flex justify-center items-center gap-3"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin" size={24} />
+                ) : sent ? (
+                  "Message Envoyé !"
+                ) : (
+                  <>Envoyer le message <Send size={20} /></>
+                )}
+              </button>
+              
+              {sent && (
+                <p className="text-center text-emerald-400 text-xs font-bold animate-pulse uppercase tracking-widest">
+                  Merci ! Notre équipe revient vers vous très vite.
+                </p>
+              )}
+            </form>
+          </div>
 
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Sous-composant pour les infos de contact
+function ContactInfo({ icon, label, value, bgColor }: any) {
+  return (
+    <div className="flex items-center gap-5 group">
+      <div className={`p-4 ${bgColor} rounded-2xl transition-transform group-hover:scale-110 duration-300`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
+        <p className="text-lg font-bold tracking-tight">{value}</p>
       </div>
     </div>
   );

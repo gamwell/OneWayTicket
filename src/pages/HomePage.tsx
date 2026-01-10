@@ -1,239 +1,144 @@
-import { Link } from 'react-router-dom';
-import { Calendar, Ticket, Users, TrendingUp, ArrowRight, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Event } from '../types/database';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { Link } from 'react-router-dom';
+import { Ticket, Calendar, Users, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 
 const HomePage = () => {
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
-  const [stats, setStats] = useState({
-    totalEvents: 0,
-    totalTickets: 0,
-    totalUsers: 0,
-  });
+  const [stats, setStats] = useState({ events: 0, tickets: 0, users: 0 });
+  const [featuredEvents, setFeaturedEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: events } = await supabase
-          .from('events')
-          .select('*, category:categories(*)')
-          .eq('statut', 'publie')
-          .gte('date_debut', new Date().toISOString())
-          .order('date_debut', { ascending: true })
-          .limit(3);
-
-        if (events) setUpcomingEvents(events);
-
-        const [eventsCount, ticketsCount, usersCount] = await Promise.all([
+        // Exécution des requêtes en parallèle pour gagner en vitesse
+        const [eventsRes, ticketsRes, usersRes, featuredRes] = await Promise.all([
           supabase.from('events').select('*', { count: 'exact', head: true }),
           supabase.from('tickets').select('*', { count: 'exact', head: true }),
-          supabase.from('users').select('*', { count: 'exact', head: true }),
+          supabase.from('user_profiles').select('*', { count: 'exact', head: true }), // Table synchronisée
+          supabase.from('events').select('*').limit(3).order('created_at', { ascending: false })
         ]);
 
         setStats({
-          totalEvents: eventsCount.count || 0,
-          totalTickets: ticketsCount.count || 0,
-          totalUsers: usersCount.count || 0,
+          events: eventsRes.count || 0,
+          tickets: ticketsRes.count || 0,
+          users: usersRes.count || 0
         });
+
+        setFeaturedEvents(featuredRes.data || []);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Erreur de chargement Home:", error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
   return (
-    <div>
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white py-24 px-4">
-        <div className="absolute inset-0 bg-gradient-neon opacity-20 animate-gradient"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,107,157,0.3),transparent_50%),radial-gradient(circle_at_70%_50%,rgba(0,229,255,0.3),transparent_50%)]"></div>
+    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden">
+      
+      {/* --- TEST TAILWIND (Plus discret) --- */}
+      <div className="absolute top-4 left-4 z-[9999] px-3 py-1 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-[10px] font-bold rounded-full uppercase tracking-widest">
+        Tailwind Engine Active
+      </div>
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center animate-fadeInScale">
-            <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 text-gradient-neon animate-float">
-              Trouvez votre prochain événement
-            </h1>
-            <p className="text-xl md:text-2xl mb-12 opacity-95 max-w-3xl mx-auto">
-              Concerts, conférences, spectacles et bien plus encore dans un univers digital unique
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <Link
-                to="/events"
-                className="inline-flex items-center justify-center space-x-2 px-10 py-5 bg-gradient-to-r from-secondary-500 to-accent-500 rounded-2xl font-bold hover:from-secondary-600 hover:to-accent-600 transition-all duration-300 shadow-2xl hover:shadow-neon-pink/50 hover:scale-105 text-lg"
-              >
-                <Search className="w-6 h-6" />
-                <span>Explorer les événements</span>
-              </Link>
-              <Link
-                to="/auth/register"
-                className="inline-flex items-center justify-center space-x-2 px-10 py-5 glass-effect rounded-2xl font-bold hover:bg-white/20 transition-all duration-300 border-2 border-white/30 hover:border-white/50 text-lg hover:scale-105"
-              >
-                <Ticket className="w-6 h-6" />
-                <span>Créer un compte</span>
-              </Link>
-            </div>
+      {/* --- COUCHE DE TEXTURE GRAIN --- */}
+      <div className="fixed inset-0 z-[1] pointer-events-none opacity-[0.03] contrast-150" 
+           style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }}></div>
+
+      {/* --- AURAS COLORÉES --- */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[-5%] left-[-5%] w-[60%] h-[60%] bg-emerald-500/10 blur-[120px] rounded-full animate-pulse"></div>
+        <div className="absolute bottom-[10%] left-[-5%] w-[45%] h-[45%] bg-purple-600/10 blur-[150px] rounded-full"></div>
+        <div className="absolute top-[40%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[140px] rounded-full"></div>
+      </div>
+
+      <div className="relative z-10">
+        
+        {/* --- HERO SECTION --- */}
+        <section className="h-[90vh] flex flex-col items-center justify-center text-center px-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold tracking-[0.3em] uppercase mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <Sparkles size={14} className="text-yellow-400" /> 
+            Bienvenue dans l'Exclusivité
           </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 bg-gradient-to-b from-neutral-50 to-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,107,157,0.1),transparent_50%),radial-gradient(circle_at_80%_20%,rgba(0,229,255,0.1),transparent_50%)]"></div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-8 card hover:shadow-neon-pink/20 animate-fadeIn group">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-secondary-500 to-secondary-600 text-white rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Calendar className="w-10 h-10" />
-              </div>
-              <h3 className="text-4xl font-bold gradient-text mb-3">{stats.totalEvents}+</h3>
-              <p className="text-gray-600 font-semibold">Événements disponibles</p>
-            </div>
-
-            <div className="text-center p-8 card hover:shadow-neon-cyan/20 animate-fadeIn group" style={{animationDelay: '0.1s'}}>
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-accent-500 to-accent-600 text-white rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Ticket className="w-10 h-10" />
-              </div>
-              <h3 className="text-4xl font-bold gradient-text mb-3">{stats.totalTickets}+</h3>
-              <p className="text-gray-600 font-semibold">Billets vendus</p>
-            </div>
-
-            <div className="text-center p-8 card hover:shadow-neon-purple/20 animate-fadeIn group" style={{animationDelay: '0.2s'}}>
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-neon-purple to-primary-700 text-white rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Users className="w-10 h-10" />
-              </div>
-              <h3 className="text-4xl font-bold gradient-text mb-3">{stats.totalUsers}+</h3>
-              <p className="text-gray-600 font-semibold">Utilisateurs inscrits</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 bg-gradient-to-b from-white to-neutral-50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-secondary-500/5 via-transparent to-accent-500/5"></div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="flex items-center justify-between mb-12">
-            <div className="animate-fadeIn">
-              <h2 className="text-4xl font-display font-bold mb-3">
-                <span className="gradient-text">Événements à venir</span>
-              </h2>
-              <p className="text-gray-600 text-lg">Découvrez les prochains événements près de chez vous</p>
-            </div>
-            <Link
-              to="/events"
-              className="hidden md:inline-flex items-center space-x-2 px-6 py-3 glass-effect text-secondary-600 hover:text-secondary-500 font-semibold rounded-xl transition-all hover:scale-105"
-            >
-              <span>Voir tout</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-                  <div className="h-48 bg-gray-300"></div>
-                  <div className="p-6 space-y-3">
-                    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-300 rounded w-1/2"></div>
-                    <div className="h-3 bg-gray-300 rounded w-full"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : upcomingEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {upcomingEvents.map((event) => (
-                <Link
-                  key={event.id}
-                  to={`/events/${event.id}`}
-                  className="card group overflow-hidden hover:shadow-2xl animate-fadeIn"
-                >
-                  <div className="relative h-56 bg-gradient-to-br from-gray-200 to-gray-300 overflow-hidden">
-                    {event.image_urls && event.image_urls.length > 0 ? (
-                      <img
-                        src={event.image_urls[0]}
-                        alt={event.titre}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-cyber">
-                        <Calendar className="w-16 h-16 text-white" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    {event.category && (
-                      <div className="absolute top-4 left-4 glass-effect px-4 py-2 rounded-xl text-sm font-bold text-white backdrop-blur-md">
-                        {event.category.nom}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-1 group-hover:text-gradient transition-all">
-                      {event.titre}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2 font-semibold">
-                      {format(new Date(event.date_debut), "d MMMM yyyy 'à' HH'h'mm", { locale: fr })}
-                    </p>
-                    <p className="text-sm text-gray-500 flex items-center space-x-1">
-                      <span>{event.lieu}</span>
-                      <span>•</span>
-                      <span>{event.ville}</span>
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Aucun événement à venir pour le moment</p>
-            </div>
-          )}
-
-          <div className="text-center mt-8 md:hidden">
-            <Link
-              to="/events"
-              className="inline-flex items-center space-x-2 text-secondary-600 hover:text-secondary-700 font-semibold"
-            >
-              <span>Voir tous les événements</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-neon opacity-20 animate-gradient"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,107,157,0.2),transparent_70%)]"></div>
-
-        <div className="max-w-7xl mx-auto text-center relative z-10 animate-fadeInScale">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-neon-cyan to-neon-purple text-white rounded-2xl mx-auto mb-8 shadow-2xl animate-float">
-            <TrendingUp className="w-10 h-10" />
-          </div>
-          <h2 className="text-4xl md:text-5xl font-display font-bold mb-6 text-white">
-            Organisateur d'événements ?
-          </h2>
-          <p className="text-xl text-white/90 mb-10 max-w-3xl mx-auto">
-            Créez et gérez vos événements facilement avec notre plateforme intuitive.
-            Profitez d'outils professionnels pour maximiser vos ventes.
+          <h1 className="text-7xl md:text-[10rem] font-black tracking-tighter mb-8 select-none leading-none">
+            <span className="bg-gradient-to-r from-emerald-400 via-blue-500 via-purple-500 via-pink-500 to-orange-400 bg-clip-text text-transparent">
+              ONEWAYTICKET
+            </span>
+          </h1>
+          <p className="text-xl md:text-3xl text-slate-400 font-medium italic max-w-3xl leading-relaxed">
+            "Chaque billet est un nouveau départ. <br /> Le futur de vos souvenirs commence ici."
           </p>
-          <Link
-            to="/auth/register"
-            className="inline-flex items-center space-x-2 px-10 py-5 bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-2xl font-bold hover:from-secondary-600 hover:to-accent-600 transition-all duration-300 shadow-2xl hover:shadow-neon-pink/50 hover:scale-105 text-lg"
-          >
-            <span>Devenir organisateur</span>
-            <ArrowRight className="w-6 h-6" />
-          </Link>
-        </div>
-      </section>
+          <div className="mt-16 flex flex-col sm:flex-row gap-6">
+            <Link to="/events" className="px-16 py-6 bg-white text-slate-900 rounded-full font-black text-lg hover:scale-105 transition-all shadow-2xl flex items-center gap-3">
+              EXPLORER LES EVENTS <ArrowRight size={20} />
+            </Link>
+          </div>
+        </section>
+
+        {/* --- STATS SECTION (Neumorphism) --- */}
+        <section className="py-20 px-6">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10">
+            {[
+              { val: stats.events, lab: "Événements", color: "text-emerald-400", icon: <Calendar /> },
+              { val: stats.tickets, lab: "Billets Vendus", color: "text-blue-400", icon: <Ticket /> },
+              { val: stats.users, lab: "Membres Actifs", color: "text-orange-400", icon: <Users /> }
+            ].map((s, i) => (
+              <div key={i} className="bg-[#1e293b]/50 backdrop-blur-xl p-12 rounded-[3.5rem] border border-white/5 text-center shadow-[20px_20px_60px_#080c14] group hover:-translate-y-3 transition-all duration-500">
+                <div className={`${s.color} flex justify-center mb-6 opacity-50 group-hover:opacity-100 transition-opacity`}>
+                  {React.cloneElement(s.icon as React.ReactElement, { size: 40 })}
+                </div>
+                <div className={`text-7xl font-black mb-4 ${s.color} tracking-tighter`}>{s.val}</div>
+                <div className="text-slate-500 font-black uppercase tracking-[0.4em] text-[10px]">{s.lab}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* --- FEATURED SECTION --- */}
+        <section className="py-32 px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-end justify-between mb-20">
+              <div>
+                <h2 className="text-5xl font-black tracking-tighter italic uppercase">Dernières <br /> <span className="text-cyan-400">Pépites</span></h2>
+              </div>
+              <Link to="/events" className="hidden md:flex items-center gap-2 font-black text-xs uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+                Voir tout le catalogue <ArrowRight size={16} />
+              </Link>
+            </div>
+            
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 className="animate-spin text-white" size={40} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                {featuredEvents.map((e) => (
+                  <div key={e.id} className="group bg-white/5 backdrop-blur-md rounded-[3.5rem] p-6 border border-white/10 transition-all hover:bg-white/10">
+                    <div className="h-80 rounded-[2.5rem] overflow-hidden mb-8 relative shadow-2xl">
+                      <img src={e.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={e.title} />
+                      <div className="absolute bottom-6 left-6 px-4 py-2 bg-black/50 backdrop-blur-lg rounded-2xl border border-white/10 text-xs font-black uppercase tracking-tighter">
+                        {e.category}
+                      </div>
+                    </div>
+                    <div className="px-2">
+                      <h3 className="text-2xl font-black tracking-tighter italic uppercase mb-2">{e.title}</h3>
+                      <div className="flex items-center justify-between mt-6">
+                        <span className="text-3xl font-black text-cyan-400">{e.price}€</span>
+                        <Link to={`/events`} className="p-4 bg-white text-black rounded-2xl group-hover:bg-cyan-400 transition-colors">
+                          <ArrowRight size={20} />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+      </div>
     </div>
   );
 };

@@ -6,6 +6,9 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Syne', 'system-ui', 'sans-serif'],
+
+        // 🟦 AJOUT MODERNE : Montserrat
+        montserrat: ['Montserrat', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -113,4 +116,4 @@ export default {
     },
   },
   plugins: [],
-};
+}

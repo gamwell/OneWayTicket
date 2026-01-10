@@ -1,128 +1,182 @@
-import React from 'react';
-import { Calendar, MapPin, Tag, ArrowRight, Star } from 'lucide-react';
+"use client"
 
-const events = [
-  { id: 1, title: "Festival Aurore Sonore", date: "28 Janv 2026", location: "Marseille", price: "45€", category: "Musique", color: "#f59e0b" },
-  { id: 2, title: "Nuit de l'Innovation", date: "11 Fév 2026", location: "Paris Station F", price: "Gratuit", category: "Tech", color: "#10b981" },
-  { id: 3, title: "Gala des Arts", date: "05 Mars 2026", location: "Lyon", price: "25€", category: "Art", color: "#ec4899" },
-];
+import type React from "react"
+import { useEffect, useState, useCallback } from "react"
+import { supabase } from "../lib/supabase"
+import { Loader2, Music, Trophy, Theater, Plane, Cpu, SearchX, RefreshCcw, Star, LayoutGrid } from "lucide-react"
+import { EventCard } from "@/components/events/EventCard"
 
-export default function EventsPage() {
+// ✅ IMPORT DE LA LOGIQUE D'IMAGES (Depuis votre fichier utilitaire)
+import { getEventImage } from "../utils/eventimages"
+
+// --- MAPPING DES ICÔNES ---
+const ICON_MAP: Record<string, React.ReactNode> = {
+  Musique: <Music size={28} />,
+  Concert: <Music size={28} />,
+  Sport: <Trophy size={28} />,
+  Théâtre: <Theater size={28} />,
+  Spectacle: <Theater size={28} />,
+  Tech: <Cpu size={28} />,
+  iTech: <Cpu size={28} />,
+  Conférence: <Cpu size={28} />,
+  Voyage: <Plane size={28} />,
+  Festival: <Star size={28} />,
+  Autre: <LayoutGrid size={28} />,
+}
+
+const EventsPage = () => {
+  // --- A. ÉTATS ---
+  const [allEvents, setAllEvents] = useState<any[]>([])
+  const [displayedEvents, setDisplayedEvents] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeFilter, setActiveFilter] = useState("TOUT")
+
+  // --- B. CHARGEMENT DES DONNÉES ---
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const { data: catsData, error: catsError } = await supabase.from("event_categories").select("*").order("id")
+
+      if (catsError) throw catsError
+      setCategories(catsData || [])
+
+      const { data: eventsData, error: eventsError } = await supabase
+        .from("events")
+        .select(
+          `
+          *,
+          event_categories:event_categories!fk_event_category ( id, name, color )
+        `,
+        )
+        .order("date", { ascending: true })
+
+      if (eventsError) throw eventsError
+
+      setAllEvents(eventsData || [])
+      setDisplayedEvents(eventsData || [])
+    } catch (error) {
+      console.error("Erreur chargement EventsPage :", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // --- C. LOGIQUE DE FILTRE ---
+  const handleFilter = (categoryId: string) => {
+    setActiveFilter(categoryId)
+
+    if (categoryId === "TOUT") {
+      setDisplayedEvents(allEvents)
+    } else {
+      const filtered = allEvents.filter((e) => e.category_id === categoryId)
+      setDisplayedEvents(filtered)
+    }
+  }
+
+  // --- RENDER ---
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      // DÉGRADÉ DEMANDÉ : Orange, Rosé, Bleu vers Vert
-      background: 'linear-gradient(135deg, #f59e0b 0%, #fb7185 25%, #4338ca 60%, #10b981 100%)',
-      padding: '60px 20px',
-      color: 'white',
-      fontFamily: 'sans-serif'
-    }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        
-        {/* En-tête avec Glassmorphism léger */}
-        <header style={{ 
-          textAlign: 'center', 
-          marginBottom: '60px',
-          padding: '40px',
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '30px',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
-        }}>
-          <h1 style={{ fontSize: '48px', fontWeight: '900', marginBottom: '15px', letterSpacing: '-1px' }}>
-            Explorer les <span style={{ color: '#fb7185' }}>Événements</span>
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '18px', fontWeight: '500' }}>
-            Vivez des moments uniques sous de nouvelles couleurs.
-          </p>
-        </header>
+    <div className="min-h-screen w-full max-w-full flex flex-col items-center overflow-x-hidden">
+      {/* --- HEADER --- */}
+<div className="w-full max-w-full bg-gradient-to-b from-slate-900 via-[#070b14] to-[#070b14] pt-16 pb-8 flex flex-col items-center shadow-2xl relative z-10 overflow-visible">
+   
+	<header className="w-full px-6 md:px-12 mb-8 text-center overflow-visible">
+       <h1 className="font-montserrat text-3xl md:text-5xl font-black uppercase tracking-tight">
+           EXPLORER <br />
+         <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600">
+           L'AVENTURE
+         </span>
+       </h1>
 
-        {/* Grille d'événements */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
-          gap: '30px' 
-        }}>
-          {events.map((event) => (
-            <div key={event.id} style={{ 
-              backgroundColor: 'rgba(15, 23, 42, 0.6)', 
-              backdropFilter: 'blur(20px)',
-              borderRadius: '28px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              overflow: 'hidden',
-              transition: 'transform 0.3s ease',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
-            }}>
-              {/* Image de fond dégradée pour chaque carte */}
-              <div style={{ 
-                height: '200px', 
-                background: `linear-gradient(135deg, ${event.color} 0%, rgba(0,0,0,0.4) 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative'
-              }}>
-                <div style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(255,255,255,0.2)', padding: '8px', borderRadius: '50%' }}>
-                   <Star size={18} fill="white" />
-                </div>
-                <Tag style={{ width: '60px', height: '60px', opacity: 0.4 }} />
-              </div>
+    </header>
 
-              <div style={{ padding: '30px' }}>
-                <div style={{ 
-                  display: 'inline-block', 
-                  padding: '6px 14px', 
-                  borderRadius: '12px', 
-                  backgroundColor: 'rgba(255,255,255,0.1)',
-                  color: event.color,
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  marginBottom: '20px',
-                  border: `1px solid ${event.color}`
-                }}>
-                  {event.category}
-                </div>
+        {/* NAVIGATION */}
+        <nav className="flex flex-wrap justify-center gap-4 px-4 max-w-7xl mx-auto w-full max-w-full overflow-hidden">
+          {/* Bouton TOUT */}
+          <button
+            onClick={() => handleFilter("TOUT")}
+            className={`px-8 py-4 rounded-full font-black uppercase text-lg flex items-center gap-3 transition-all border active:scale-95 ${
+              activeFilter === "TOUT"
+                ? "bg-white text-black border-white shadow-xl scale-105 ring-4 ring-white/20"
+                : "bg-slate-800/50 text-slate-300 border-white/10 hover:bg-slate-700/50 hover:border-white/30 backdrop-blur-md"
+            }`}
+          >
+            <RefreshCcw size={22} /> TOUS
+          </button>
 
-                <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '15px' }}>{event.title}</h3>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: 'rgba(255,255,255,0.7)', fontSize: '15px', marginBottom: '25px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Calendar size={18} style={{ color: '#fb7185' }} /> {event.date}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <MapPin size={18} style={{ color: '#10b981' }} /> {event.location}
-                  </div>
-                </div>
+          {/* Boutons dynamiques */}
+          {categories.map((cat) => {
+            const Icon = ICON_MAP[cat.name] || <LayoutGrid size={22} />
+            const isActive = activeFilter === cat.id
 
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  borderTop: '1px solid rgba(255,255,255,0.1)', 
-                  paddingTop: '25px' 
-                }}>
-                  <span style={{ fontSize: '26px', fontWeight: '900' }}>{event.price}</span>
-                  <button style={{ 
-                    padding: '12px 24px',
-                    borderRadius: '16px',
-                    border: 'none',
-                    background: 'linear-gradient(to right, #f59e0b, #fb7185)',
-                    color: 'white',
-                    fontWeight: '800',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    boxShadow: '0 10px 20px rgba(251, 113, 133, 0.3)'
-                  }}>
-                    Réserver <ArrowRight size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            const buttonStyle = isActive
+              ? {
+                  backgroundColor: cat.color,
+                  borderColor: cat.color,
+                  boxShadow: `0 0 25px ${cat.color}66`,
+                }
+              : {}
+
+            return (
+              <button
+                key={cat.id}
+                onClick={() => handleFilter(cat.id)}
+                className={`px-8 py-4 rounded-full font-black uppercase text-lg flex items-center gap-3 transition-all border active:scale-95 ${
+                  isActive
+                    ? "text-white border-white scale-105 ring-2 ring-offset-2 ring-offset-[#070b14]"
+                    : "bg-slate-800/50 text-slate-300 border-white/10 hover:bg-slate-700/50 hover:border-white/30 backdrop-blur-md"
+                }`}
+                style={buttonStyle}
+              >
+                {Icon} {cat.name}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* --- CONTENU --- */}
+      <div className="w-full max-w-full bg-[#070b14] flex flex-col items-center pt-10 pb-20 px-6 min-h-[50vh] overflow-hidden">
+        {loading ? (
+          <div className="flex flex-col items-center mt-20 gap-8">
+            <Loader2 className="animate-spin text-cyan-500" size={80} />
+            <p className="text-3xl font-black uppercase italic animate-pulse text-slate-500">Chargement...</p>
+          </div>
+        ) : displayedEvents.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 w-full max-w-[90rem]">
+            {displayedEvents.map((event) => {
+              
+              // ✅ GESTION DES IMAGES
+              // 1. On récupère l'image de la BDD
+              let finalImage = event.image_url;
+
+              // 2. Si l'image est vide ou le lien cassé, on utilise la fonction importée
+              if (!finalImage || !finalImage.startsWith("http")) {
+                 finalImage = getEventImage(event.event_categories?.name || "default");
+              }
+
+              return <EventCard key={event.id} event={event} image={finalImage} />
+            })}
+          </div>
+        ) : (
+          <div className="mt-20 text-center flex flex-col items-center gap-8">
+            <SearchX size={100} className="text-slate-800" />
+            <p className="text-2xl font-bold text-slate-500 uppercase">Aucun événement trouvé</p>
+            <button
+              onClick={() => handleFilter("TOUT")}
+              className="px-8 py-4 bg-cyan-900/30 text-cyan-400 rounded-xl border border-cyan-900 hover:bg-cyan-500 hover:text-white transition-colors uppercase font-bold"
+            >
+              Voir tout
+            </button>
+          </div>
+        )}
       </div>
     </div>
-  );
+  )
 }
+
+export default EventsPage

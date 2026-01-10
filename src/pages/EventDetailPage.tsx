@@ -1,259 +1,278 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, Clock, Users, ArrowLeft, ShoppingCart } from 'lucide-react';
-import { useCart } from '../contexts/CartContext';
+import React, { useEffect, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import toast from 'react-hot-toast';
-
-// On définit les types localement pour être sûr qu'ils collent à la DB
-type EventDB = {
-  id: string;
-  titre: string;
-  description: string;
-  date_debut: string;
-  lieu: string;
-  image: string; // C'est une string simple maintenant, pas un tableau
-  category: { nom: string; slug: string } | null;
-  organizer_id: string;
-};
-
-type TicketTypeDB = {
-  id: string;
-  name: string; // Resté en anglais dans la DB
-  price: number; // Resté en anglais dans la DB
-  quantity_available: number; // Resté en anglais dans la DB
-  description?: string;
-};
+import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
+import { Calendar, MapPin, ArrowLeft, Loader, Ticket, ShoppingCart, CheckCircle } from 'lucide-react';
+import { Event, TicketPriceView } from '../types'; // Assure-toi d'avoir mis à jour types.ts
 
 const EventDetailPage = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { addToCart } = useCart();
-  const [event, setEvent] = useState<EventDB | null>(null);
-  const [ticketTypes, setTicketTypes] = useState<TicketTypeDB[]>([]);
+
+  const [event, setEvent] = useState<Event | null>(null);
+  const [ticketOptions, setTicketOptions] = useState<TicketPriceView[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<TicketPriceView | null>(null);
+  
   const [loading, setLoading] = useState(true);
-
-  // Fonction pour gérer l'ajout au panier
-  const handleAddToCart = (ticketType: TicketTypeDB) => {
-    if (!event) return;
-
-    addToCart({
-      eventId: event.id,
-      eventTitle: event.titre,
-      eventDate: event.date_debut,
-      eventImage: event.image || '',
-      ticketTypeId: ticketType.id,
-      ticketTypeName: ticketType.name, // Mapping 'name' vers 'ticketTypeName'
-      price: ticketType.price,         // Mapping 'price' vers 'price'
-    });
-
-    toast.success('Billet ajouté au panier');
-  };
+  const [buying, setBuying] = useState(false);
 
   useEffect(() => {
-    if (id) fetchEventDetails();
-  }, [id]);
+    if (id) {
+      loadEventData();
+    }
+  }, [id, user]);
 
-  const fetchEventDetails = async () => {
+  const loadEventData = async () => {
     try {
       setLoading(true);
 
-      // 1. Récupération de l'événement
-      // On retire 'organisateur:users(*)' qui causait l'erreur car la relation est complexe
+      // 1. Récupérer les infos de l'événement
       const { data: eventData, error: eventError } = await supabase
         .from('events')
-        .select('*, category:categories(*)') 
+        .select('*')
         .eq('id', id)
         .single();
 
       if (eventError) throw eventError;
       setEvent(eventData);
 
-      // 2. Récupération des billets
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('ticket_types')
+      // 2. Déterminer le type de profil de l'utilisateur
+      let profileTypeId = 1; // Par défaut "Standard" (ID 1)
+      
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('profile_type_id')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileData) {
+          profileTypeId = profileData.profile_type_id;
+        }
+      }
+
+      // 3. Récupérer les tarifs via la VUE CALCULATRICE
+      // On demande les prix pour cet événement ET pour ce type de profil
+      const { data: pricesData, error: pricesError } = await supabase
+        .from('view_ticket_prices')
         .select('*')
         .eq('event_id', id)
-        .order('price'); // 'price' en anglais dans la DB
+        .eq('profile_type_id', profileTypeId);
 
-      if (ticketError) throw ticketError;
-      setTicketTypes(ticketData || []);
+      if (pricesError) throw pricesError;
+      
+      setTicketOptions(pricesData || []);
+
+      // Sélectionner le premier billet par défaut s'il y en a
+      if (pricesData && pricesData.length > 0) {
+        setSelectedTicket(pricesData[0]);
+      }
 
     } catch (error) {
-      console.error('Erreur fetch:', error);
-      // On ne met pas de toast erreur ici pour éviter le spam si c'est juste un petit souci
+      console.error("Erreur chargement:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ AJOUT AU PANIER (Modifié pour inclure le type de billet)
+  const handleAddToCart = () => {
+    if (!event || !selectedTicket) return;
+
+    addToCart({
+      id: selectedTicket.ticket_type_id, // On utilise l'ID du type de billet comme ID unique panier
+      title: `${event.title} - ${selectedTicket.ticket_name}`,
+      price: selectedTicket.final_price,
+      image_url: event.image_url || '', // Gestion cas null
+      date: event.date,
+      location: event.location,
+    });
+    
+    // Feedback visuel ou notification ici si tu veux
+    alert("Billet ajouté au panier !");
+  };
+
+  // ✅ RÉSERVATION DIRECTE (Mise à jour pour la nouvelle structure DB)
+  const handleBooking = async () => {
+    if (!user) {
+      if (window.confirm("Connectez-vous pour réserver.")) navigate('/auth/login');
+      return;
+    }
+    if (!event || !selectedTicket) return;
+
+    try {
+      setBuying(true);
+
+      // ÉTAPE 1 : Créer une commande (Order)
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert([{
+          user_id: user.id,
+          total_amount: selectedTicket.final_price,
+          status: 'paid' // Pour l'exemple direct
+        }])
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // ÉTAPE 2 : Créer le billet lié à la commande
+      const { error: ticketError } = await supabase
+        .from('tickets')
+        .insert([{
+          order_id: orderData.id,
+          event_id: event.id,
+          ticket_type_id: selectedTicket.ticket_type_id,
+          final_price: selectedTicket.final_price,
+          holder_name: user.user_metadata?.full_name || 'Moi',
+          status: 'valid'
+        }]);
+
+      if (ticketError) throw ticketError;
+
+      navigate('/my-tickets'); // Redirection vers mes billets
+    } catch (error) {
+      console.error("Erreur achat:", error);
+      alert("Erreur lors de la réservation.");
+    } finally {
+      setBuying(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary-500"></div>
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <Loader className="animate-spin text-cyan-500" size={40} />
       </div>
     );
   }
 
-  if (!event) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center p-8">
-          <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-700 mb-2">Événement introuvable</h2>
-          <p className="text-gray-500 mb-6">Il semble que cet événement n'existe plus.</p>
-          <Link to="/events" className="bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700 transition">
-            Retour aux événements
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (!event) return <div className="text-white text-center pt-32">Événement introuvable</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header avec Image */}
-      <div className="relative h-96 bg-gray-900">
-        {event.image ? (
-          <img
-            src={event.image}
-            alt={event.titre}
-            className="w-full h-full object-cover opacity-70"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-800">
-            <Calendar className="w-24 h-24 text-gray-600" />
+    <div className="min-h-screen bg-[#0f172a] text-white pt-24 pb-20 px-4">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
+        
+        {/* COLONNE GAUCHE : IMAGE & INFO */}
+        <div>
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl mb-8 group">
+             {/* Fallback image si pas d'image_url */}
+            <img 
+              src={event.image_url || "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?auto=format&fit=crop&q=80"} 
+              alt={event.title} 
+              className="w-full h-[400px] object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-transparent to-transparent opacity-80" />
+            <div className="absolute bottom-6 left-6">
+              <span className="px-3 py-1 bg-pink-500 text-xs font-bold uppercase tracking-wider rounded-full mb-3 inline-block">
+                Concert
+              </span>
+            </div>
           </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 -mt-32 relative z-10 pb-12">
-        <Link
-          to="/events"
-          className="inline-flex items-center space-x-2 text-white/90 hover:text-white mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Retour aux événements</span>
-        </Link>
-
-        <div className="bg-white rounded-xl shadow-xl overflow-hidden">
-          <div className="p-8">
-            {/* Titre et Catégorie */}
-            <div className="mb-6">
-              {event.category && (
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-secondary-100 text-secondary-800 mb-4 uppercase tracking-wide">
-                  {event.category.nom}
-                </span>
-              )}
-              <h1 className="text-4xl font-extrabold text-gray-900">{event.titre}</h1>
+          <h1 className="text-4xl font-bold mb-4 leading-tight">{event.title}</h1>
+          
+          <div className="flex flex-col gap-3 text-gray-300 mb-6">
+            <div className="flex items-center gap-2">
+              <Calendar className="text-cyan-400" size={20} />
+              <span>{new Date(event.date).toLocaleDateString('fr-FR', { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' 
+              })}</span>
             </div>
-
-            {/* Infos Pratiques */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 border-y border-gray-100 py-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-blue-50 rounded-full text-blue-600">
-                  <Calendar className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 font-medium">Date</div>
-                  <div className="font-semibold text-gray-900">
-                    {event.date_debut && format(new Date(event.date_debut), "d MMMM yyyy", { locale: fr })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-orange-50 rounded-full text-orange-600">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 font-medium">Heure</div>
-                  <div className="font-semibold text-gray-900">
-                    {event.date_debut && format(new Date(event.date_debut), "HH'h'mm", { locale: fr })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-green-50 rounded-full text-green-600">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 font-medium">Lieu</div>
-                  <div className="font-semibold text-gray-900">{event.lieu}</div>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="text-pink-500" size={20} />
+              <span>{event.location}</span>
             </div>
+          </div>
+          
+          <p className="text-gray-400 leading-relaxed text-lg">
+            {event.description}
+          </p>
+        </div>
 
-            {/* Description */}
-            <div className="prose max-w-none mb-12">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">À propos de l'événement</h2>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-line text-lg">
-                {event.description}
-              </p>
-            </div>
+        {/* COLONNE DROITE : SÉLECTION BILLETS */}
+        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 h-fit sticky top-28">
+          <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <Ticket className="text-pink-500" /> Choisir vos places
+          </h3>
 
-            {/* Billetterie */}
-            <div id="billetterie" className="bg-gray-50 rounded-xl p-6 md:p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                <Users className="w-6 h-6 mr-2 text-secondary-600" />
-                Réserver vos places
-              </h2>
-              
-              {ticketTypes.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {ticketTypes.map((ticketType) => {
-                    // Simulation simple : si pas de 'sold' column, on suppose qu'il en reste tant que > 0
-                    const isAvailable = ticketType.quantity_available > 0;
-
-                    return (
-                      <div
-                        key={ticketType.id}
-                        className="bg-white border-2 border-transparent hover:border-secondary-500 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col"
-                      >
-                        <div className="flex-grow">
-                          <h3 className="text-xl font-bold text-gray-900 mb-2">{ticketType.name}</h3>
-                          <div className="text-3xl font-bold text-secondary-600 mb-4">
-                            {Number(ticketType.price).toFixed(2)} €
-                          </div>
-                          <p className="text-sm text-gray-500 mb-4 flex items-center">
-                            <span className={`w-2 h-2 rounded-full mr-2 ${isAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                            {isAvailable ? `${ticketType.quantity_available} places disponibles` : 'Complet'}
-                          </p>
-                        </div>
-                        
-                        <button
-                          onClick={() => handleAddToCart(ticketType)}
-                          disabled={!isAvailable}
-                          className={`w-full flex items-center justify-center space-x-2 py-3 rounded-lg font-bold transition-all ${
-                            isAvailable
-                              ? 'bg-secondary-600 text-white hover:bg-secondary-700 shadow-lg shadow-secondary-200'
-                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          }`}
-                        >
-                          {isAvailable ? (
-                            <>
-                              <ShoppingCart className="w-5 h-5" />
-                              <span>Ajouter au panier</span>
-                            </>
-                          ) : (
-                            <span>Épuisé</span>
-                          )}
-                        </button>
+          {/* LISTE DES BILLETS */}
+          <div className="space-y-4 mb-8">
+            {ticketOptions.length === 0 ? (
+              <p className="text-gray-400">Aucun billet disponible pour le moment.</p>
+            ) : (
+              ticketOptions.map((ticket) => (
+                <div 
+                  key={ticket.ticket_type_id}
+                  onClick={() => setSelectedTicket(ticket)}
+                  className={`
+                    relative p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center group
+                    ${selectedTicket?.ticket_type_id === ticket.ticket_type_id 
+                      ? 'border-cyan-500 bg-cyan-500/10' 
+                      : 'border-white/10 hover:border-white/30 bg-white/5'}
+                  `}
+                >
+                  <div>
+                    <h4 className="font-bold text-lg">{ticket.ticket_name}</h4>
+                    {/* Affichage intelligent du prix barré si réduction */}
+                    {ticket.final_price < ticket.base_price ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-gray-400 line-through text-sm">{ticket.base_price}€</span>
+                        <span className="text-green-400 font-bold">{ticket.final_price}€</span>
+                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full ml-2">
+                          Offre {ticket.profile_name}
+                        </span>
                       </div>
-                    );
-                  })}
+                    ) : (
+                      <div className="text-gray-300 font-bold mt-1">{ticket.base_price}€</div>
+                    )}
+                  </div>
+
+                  {selectedTicket?.ticket_type_id === ticket.ticket_type_id && (
+                    <CheckCircle className="text-cyan-500" size={24} />
+                  )}
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500 bg-white rounded-lg border border-gray-200">
-                  Aucune billetterie disponible pour le moment.
-                </div>
-              )}
+              ))
+            )}
+          </div>
+
+          {/* RÉSUMÉ ET BOUTONS */}
+          <div className="border-t border-white/10 pt-6">
+            <div className="flex justify-between items-center mb-6">
+              <span className="text-gray-400">Total à payer</span>
+              <span className="text-3xl font-bold text-white">
+                {selectedTicket ? selectedTicket.final_price : 0}€
+              </span>
             </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleAddToCart}
+                disabled={!selectedTicket}
+                className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl flex justify-center items-center gap-2 transition-all"
+              >
+                <ShoppingCart size={20} /> Panier
+              </button>
+
+              <button
+                onClick={handleBooking}
+                disabled={buying || !selectedTicket}
+                className="flex-1 py-4 bg-gradient-to-r from-pink-500 to-cyan-500 hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl flex justify-center items-center gap-2 transition-all"
+              >
+                {buying ? <Loader className="animate-spin" /> : <><Ticket size={20} /> Réserver</>}
+              </button>
+            </div>
+            {!user && (
+              <p className="text-xs text-center text-gray-500 mt-4">
+                Connectez-vous pour voir vos tarifs réduits (Étudiant, VIP...)
+              </p>
+            )}
           </div>
         </div>
+
       </div>
     </div>
   );

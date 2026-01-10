@@ -1,87 +1,79 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 
-// Définition des types
-export type CartItem = {
-  eventId: string;
-  eventTitle: string;
-  eventDate: string;
-  eventImage: string;
-  ticketTypeId: string;
-  ticketTypeName: string;
+export interface CartItem {
+  id: string;
+  title: string;
   price: number;
-  quantity: number;
-};
+  image_url: string;
+  date: string;
+  location: string;
+}
 
-type CartContextType = {
+interface CartContextType {
   cart: CartItem[];
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void;
-  removeFromCart: (ticketTypeId: string) => void;
-  updateQuantity: (ticketTypeId: string, delta: number) => void;
-  clearCart: () => void;
+  addToCart: (item: CartItem) => void;
+  removeFromCart: (id: string) => void;
+  clearCart: (shouldConfirm?: boolean) => void;
   total: number;
-};
+  itemCount: number;
+}
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  // 1. CHARGEMENT : On regarde si un panier existe déjà dans la mémoire
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem('cart');
-    return savedCart ? JSON.parse(savedCart) : [];
+    try {
+      const savedCart = localStorage.getItem('onewayticket_cart');
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch (error) {
+      return [];
+    }
   });
 
-  // 2. SAUVEGARDE : Dès que le panier change, on l'écrit dans la mémoire
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
+    localStorage.setItem('onewayticket_cart', JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = (newItem: Omit<CartItem, 'quantity'>) => {
-    setCart((currentCart) => {
-      const existingItem = currentCart.find(
-        (item) => item.ticketTypeId === newItem.ticketTypeId
-      );
-
-      if (existingItem) {
-        return currentCart.map((item) =>
-          item.ticketTypeId === newItem.ticketTypeId
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-
-      return [...currentCart, { ...newItem, quantity: 1 }];
+  const addToCart = useCallback((item: CartItem) => {
+    setCart((prevCart) => {
+      if (prevCart.some((i) => i.id === item.id)) return prevCart;
+      return [...prevCart, item];
     });
-  };
+  }, []);
 
-  const removeFromCart = (ticketTypeId: string) => {
-    setCart((currentCart) =>
-      currentCart.filter((item) => item.ticketTypeId !== ticketTypeId)
-    );
-  };
+  const removeFromCart = useCallback((id: string) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  }, []);
 
-  const updateQuantity = (ticketTypeId: string, delta: number) => {
-    setCart((currentCart) =>
-      currentCart.map((item) => {
-        if (item.ticketTypeId === ticketTypeId) {
-          const newQuantity = Math.max(0, item.quantity + delta);
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      }).filter((item) => item.quantity > 0)
-    );
-  };
+  const clearCart = useCallback((shouldConfirm: boolean = false) => {
+    if (shouldConfirm) {
+      if (window.confirm("Voulez-vous vraiment vider votre panier ?")) {
+        setCart([]);
+      }
+    } else {
+      setCart([]);
+    }
+  }, []);
 
-  const clearCart = () => {
-    setCart([]);
-    localStorage.removeItem('cart');
-  };
+  // OPTIMISATION : Calculs mémoïsés pour éviter les calculs inutiles
+  const total = useMemo(() => {
+    return cart.reduce((acc, item) => acc + (Number(item.price) || 0), 0);
+  }, [cart]);
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = useMemo(() => cart.length, [cart]);
+
+  // OPTIMISATION : Mémoïser la valeur du contexte pour éviter de re-render les consommateurs
+  const value = useMemo(() => ({
+    cart,
+    addToCart,
+    removeFromCart,
+    clearCart,
+    total,
+    itemCount
+  }), [cart, addToCart, removeFromCart, clearCart, total, itemCount]);
 
   return (
-    <CartContext.Provider
-      value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart, total }}
-    >
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
@@ -89,8 +81,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
+  if (!context) {
+    throw new Error('useCart doit être utilisé à l’intérieur de CartProvider');
   }
   return context;
 };

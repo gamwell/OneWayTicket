@@ -1,332 +1,250 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Calendar,
-  Users,
-  TrendingUp,
-  Eye,
-  Edit,
-  Trash2,
-  Plus,
-  DollarSign,
-  Ticket
-} from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState, useCallback } from "react";
+import { supabase } from "../lib/supabase"; 
+import { 
+  TrendingUp, 
+  Ticket, 
+  Users, 
+  DollarSign, 
+  Loader2, 
+  ArrowUpRight,
+  RefreshCcw,
+  LayoutDashboard
+} from "lucide-react";
 
-interface Event {
-  id: string;
-  titre: string;
-  lieu: string;
-  ville: string;
-  date_debut: string;
-  statut: string;
-  capacite_totale: number;
-  image_urls: string[];
+// --- TYPES SÉCURISÉS ---
+interface Sale {
+  final_price: number;
+  created_at: string;
+  events: {
+    title: string;
+  } | null;
 }
 
 interface Stats {
-  totalEvents: number;
-  totalTicketsSold: number;
   totalRevenue: number;
-  activeEvents: number;
+  totalTickets: number;
+  totalUsers: number;
+  recentSales: Sale[];
 }
 
-const DashboardPage = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [events, setEvents] = useState<Event[]>([]);
+const AdminDashboardPage = () => {
   const [stats, setStats] = useState<Stats>({
-    totalEvents: 0,
-    totalTicketsSold: 0,
     totalRevenue: 0,
-    activeEvents: 0,
+    totalTickets: 0,
+    totalUsers: 0,
+    recentSales: [],
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user]);
-
-  const fetchDashboardData = async () => {
+  const fetchAdminStats = useCallback(async () => {
     try {
-      const { data: eventsData, error: eventsError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('organisateur_id', user?.id)
-        .order('date_debut', { ascending: false });
+      if (!refreshing) setLoading(true);
 
-      if (eventsError) throw eventsError;
+      const { data: ticketsData, error: ticketError } = await supabase
+        .from("tickets")
+        .select(`
+          final_price, 
+          created_at, 
+          events (
+            title
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      setEvents(eventsData || []);
+      if (ticketError) throw ticketError;
 
-      if (eventsData && eventsData.length > 0) {
-        const eventIds = eventsData.map(e => e.id);
+      const { count: userCount, error: userError } = await supabase
+        .from("user_profiles")
+        .select("*", { count: 'exact', head: true });
 
-        const { data: ticketTypesData, error: ticketError } = await supabase
-          .from('ticket_types')
-          .select('quantite_vendue, prix')
-          .in('event_id', eventIds);
+      if (userError) throw userError;
 
-        if (ticketError) throw ticketError;
-
-        const totalSold = ticketTypesData?.reduce((sum, t) => sum + (t.quantite_vendue || 0), 0) || 0;
-        const totalRev = ticketTypesData?.reduce((sum, t) => sum + ((t.quantite_vendue || 0) * parseFloat(t.prix)), 0) || 0;
-        const activeCount = eventsData.filter(e => e.statut === 'publie').length;
-
-        setStats({
-          totalEvents: eventsData.length,
-          totalTicketsSold: totalSold,
-          totalRevenue: totalRev,
-          activeEvents: activeCount,
-        });
-      }
+      const tickets = (ticketsData as unknown as Sale[]) || [];
+      const revenue = tickets.reduce((acc, t) => acc + (Number(t.final_price) || 0), 0);
+      
+      setStats({
+        totalRevenue: revenue,
+        totalTickets: tickets.length,
+        totalUsers: userCount || 0,
+        recentSales: tickets,
+      });
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Erreur lors du chargement des données');
+      console.error("Erreur système stats:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [refreshing]);
 
-  const handleDeleteEvent = async (eventId: string, eventTitle: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'événement "${eventTitle}" ?`)) {
-      return;
-    }
+  useEffect(() => {
+    fetchAdminStats();
+  }, [fetchAdminStats]);
 
-    try {
-      const { error } = await supabase
-        .from('events')
-        .delete()
-        .eq('id', eventId);
-
-      if (error) throw error;
-
-      toast.success('Événement supprimé avec succès');
-      fetchDashboardData();
-    } catch (error) {
-      console.error('Error deleting event:', error);
-      toast.error('Erreur lors de la suppression');
-    }
-  };
-
-  if (loading) {
+  if (loading && !refreshing) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary-500"></div>
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center">
+        <div className="relative">
+          <Loader2 className="w-16 h-16 animate-spin text-cyan-400" />
+          <div className="absolute inset-0 blur-2xl bg-cyan-500/20 animate-pulse"></div>
+        </div>
+        <p className="text-slate-400 font-black italic uppercase tracking-[0.3em] mt-8 animate-pulse">
+          Initialisation OneWay System...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-gray-900">Tableau de Bord Organisateur</h1>
-            <p className="text-gray-600 mt-2">Gérez vos événements et suivez vos performances</p>
+    /* CORRECTION : Ajout de 'flex flex-col items-center' pour centrer tout le contenu horizontalement */
+    <div className="min-h-screen w-full bg-[#0f172a] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e1b4b] flex flex-col items-center text-white selection:bg-cyan-500 selection:text-black">
+      
+      {/* Conteneur avec padding et largeur max, centré par mx-auto et le flex parent */}
+      <div className="w-full max-w-7xl mx-auto p-6 lg:p-10">
+        
+        {/* Header Ultra-Moderne */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-16">
+          <div className="flex items-center gap-6">
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+              <div className="relative p-4 bg-slate-900 border border-white/10 rounded-2xl text-cyan-400 shadow-2xl">
+                <LayoutDashboard size={32} />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-5xl font-black italic tracking-tighter uppercase leading-none bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
+                Control <span className="text-cyan-400">Panel</span>
+              </h1>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2 opacity-70">
+                Monitoring Temps Réel — OneWayTicket v2.6
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => navigate('/dashboard/events/new')}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-lg font-semibold hover:from-secondary-600 hover:to-accent-600 transition-all shadow-lg"
+          
+          <button 
+            onClick={() => { setRefreshing(true); fetchAdminStats(); }}
+            disabled={refreshing}
+            className="group flex items-center gap-3 bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/50 px-8 py-4 rounded-2xl transition-all duration-300 font-black uppercase tracking-tighter disabled:opacity-50"
           >
-            <Plus className="w-5 h-5" />
-            <span>Créer un événement</span>
+            <RefreshCcw size={20} className={`${refreshing ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"} text-cyan-400`} />
+            <span className="tracking-widest text-xs">{refreshing ? "Sync..." : "Rafraîchir"}</span>
           </button>
+        </header>
+
+        {/* --- KPI GRID --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <StatCard 
+            title="Revenu Brut" 
+            value={`${stats.totalRevenue.toLocaleString('fr-FR')} €`} 
+            icon={<DollarSign size={24} />}
+            color="bg-emerald-500/10"
+            iconColor="text-emerald-400"
+          />
+          <StatCard 
+            title="Billets Vendus" 
+            value={stats.totalTickets.toLocaleString('fr-FR')} 
+            icon={<Ticket size={24} />}
+            color="bg-cyan-500/10"
+            iconColor="text-cyan-400"
+          />
+          <StatCard 
+            title="Database Users" 
+            value={stats.totalUsers.toLocaleString('fr-FR')} 
+            icon={<Users size={24} />}
+            color="bg-pink-500/10"
+            iconColor="text-pink-400"
+          />
+          <StatCard 
+            title="Performance" 
+            value="+12.5%" 
+            icon={<TrendingUp size={24} />}
+            color="bg-purple-500/10"
+            iconColor="text-purple-400"
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Événements</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalEvents}</p>
-              </div>
-              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-primary-600" />
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mt-4">
-              {stats.activeEvents} actifs
-            </p>
+        {/* --- TABLEAU DE VENTES GLASSMORPHISM --- */}
+        <div className="group relative bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl overflow-hidden transition-all duration-500 hover:border-white/20">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 blur-[120px] rounded-full -mr-20 -mt-20 pointer-events-none"></div>
+          
+          <div className="flex justify-between items-center mb-10 relative z-10">
+            <h2 className="text-2xl font-black italic tracking-tighter uppercase flex items-center gap-3">
+              <div className="w-2 h-8 bg-cyan-500 rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+              Flux de Ventes
+            </h2>
+            <button className="text-[10px] font-black text-cyan-400 hover:text-white uppercase tracking-[0.3em] flex items-center gap-2 transition-all group bg-cyan-500/5 px-5 py-2.5 rounded-full border border-cyan-500/20 hover:bg-cyan-500">
+              Explorer <ArrowUpRight size={14} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+            </button>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Billets Vendus</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalTicketsSold}</p>
-              </div>
-              <div className="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center">
-                <Ticket className="w-6 h-6 text-secondary-600" />
-              </div>
-            </div>
-            <p className="text-sm text-green-600 mt-4 flex items-center">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              Performance solide
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Revenus Totaux</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {stats.totalRevenue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-accent-600" />
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mt-4">
-              Ce mois-ci
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Taux de Remplissage</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {events.length > 0 ? Math.round((stats.totalTicketsSold / events.reduce((sum, e) => sum + e.capacite_totale, 0)) * 100) : 0}%
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mt-4">
-              Moyenne globale
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-display font-bold text-gray-900">Mes Événements</h2>
-          </div>
-
-          {events.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun événement</h3>
-              <p className="text-gray-600 mb-6">Commencez par créer votre premier événement</p>
-              <button
-                onClick={() => navigate('/dashboard/events/new')}
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-lg font-semibold hover:from-secondary-600 hover:to-accent-600 transition-all"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Créer un événement</span>
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Événement
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Lieu
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Capacité
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+          <div className="overflow-x-auto relative z-10">
+            <table className="w-full text-left border-separate border-spacing-y-3">
+              <thead>
+                <tr className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
+                  <th className="pb-4 px-6">Événement</th>
+                  <th className="pb-4 px-6 text-center">Horodatage</th>
+                  <th className="pb-4 px-6 text-right">Transaction</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recentSales.slice(0, 6).map((sale, idx) => (
+                  <tr key={idx} className="group/row bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-300">
+                    <td className="py-5 px-6 rounded-l-2xl border-l border-y border-white/5 group-hover/row:border-cyan-500/30 transition-colors">
+                      <span className="font-bold text-slate-100 uppercase tracking-tighter italic block truncate max-w-[250px]">
+                        {sale.events?.title || "Pass Standard"}
+                      </span>
+                    </td>
+                    <td className="py-5 px-6 text-center border-y border-white/5 text-slate-400 font-mono text-[10px] uppercase">
+                      {new Date(sale.created_at).toLocaleDateString('fr-FR', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="py-5 px-6 text-right rounded-r-2xl border-r border-y border-white/5 group-hover/row:border-cyan-500/30 transition-colors">
+                      <span className="font-black text-cyan-400 text-xl tracking-tighter">
+                        +{sale.final_price}€
+                      </span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {events.map((event) => (
-                    <tr key={event.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <img
-                            src={event.image_urls[0]}
-                            alt={event.titre}
-                            className="w-10 h-10 rounded object-cover mr-3"
-                          />
-                          <div className="text-sm font-medium text-gray-900">
-                            {event.titre}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{event.lieu}</div>
-                        <div className="text-sm text-gray-500">{event.ville}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {new Date(event.date_debut).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            event.statut === 'publie'
-                              ? 'bg-green-100 text-green-800'
-                              : event.statut === 'brouillon'
-                              ? 'bg-gray-100 text-gray-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {event.statut === 'publie' ? 'Publié' : event.statut === 'brouillon' ? 'Brouillon' : 'Annulé'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {event.capacite_totale} places
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => navigate(`/events/${event.id}`)}
-                            className="p-2 text-gray-600 hover:text-secondary-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Voir"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => navigate(`/dashboard/events/${event.id}/edit`)}
-                            className="p-2 text-gray-600 hover:text-secondary-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteEvent(event.id, event.titre)}
-                            className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+            
+            {stats.recentSales.length === 0 && (
+              <div className="py-20 text-center flex flex-col items-center gap-4 border-2 border-dashed border-white/5 rounded-3xl">
+                <RefreshCcw className="text-slate-800 w-12 h-12" />
+                <p className="text-slate-500 font-black italic uppercase tracking-widest text-xs">
+                  Aucune donnée détectée dans le flux
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default DashboardPage;
+// --- COMPOSANT INTERNE KPI ---
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  color: string;
+  iconColor: string;
+}
+
+const StatCard = ({ title, value, icon, color, iconColor }: StatCardProps) => (
+  <div className="relative group">
+    <div className="absolute -inset-0.5 bg-gradient-to-r from-transparent to-transparent group-hover:from-cyan-500/20 group-hover:to-purple-500/20 rounded-[2rem] transition duration-500"></div>
+    <div className="relative bg-white/5 border border-white/10 p-8 rounded-[2rem] hover:bg-white/[0.07] transition-all duration-500 shadow-xl overflow-hidden">
+      <div className={`w-14 h-14 ${color} ${iconColor} rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
+        {icon}
+      </div>
+      <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-2">{title}</p>
+      <p className="text-3xl font-black italic tracking-tighter group-hover:text-cyan-400 transition-colors">{value}</p>
+      <div className="absolute bottom-0 left-0 h-1 bg-cyan-500 w-0 group-hover:w-full transition-all duration-700"></div>
+    </div>
+  </div>
+);
+
+export default AdminDashboardPage;

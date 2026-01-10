@@ -1,0 +1,20 @@
+{
+  "name": "server-backend",
+  "version": "1.0.0",
+  "description": "Backend pour OneWayTicket",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "nodemailer": "^7.0.12",
+    "stripe": "^15.12.0"
+  }
+}
