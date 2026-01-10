@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
+// Cache simple pour éviter les appels inutiles
 const profileCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 30000;
 
@@ -31,19 +32,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
-    loading: true,
+    loading: true, // État initial : chargement
     error: null,
   });
 
-  // Utilisation d'une ref pour éviter de déclencher l'effet quand on vérifie l'initialisation
-  const initialized = useRef(false);
-
-  const loadProfile = useCallback(async (userId: string, forceRefresh = false) => {
-    if (!forceRefresh) {
+  // Fonction pour charger le profil utilisateur
+  const fetchProfile = useCallback(async (userId: string, force = false) => {
+    if (!force) {
       const cached = profileCache.get(userId);
-      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-        return cached.data;
-      }
+      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) return cached.data;
     }
 
     try {
@@ -56,78 +53,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       profileCache.set(userId, { data, timestamp: Date.now() });
       return data;
-    } catch (error: any) {
-      console.error('[Auth] Error loading profile:', error.message);
+    } catch (err: any) {
+      console.error('[Auth] Erreur profil:', err.message);
       return null;
     }
   }, []);
 
   useEffect(() => {
-    // Empêche la double initialisation
-    if (initialized.current) return;
-    initialized.current = true;
-
     let isMounted = true;
 
-    const initializeAuth = async () => {
-      try {
-        // 1. Obtenir la session actuelle
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        let profileData = null;
-        if (session?.user) {
-          profileData = await loadProfile(session.user.id);
-        }
+    // 1. Définir la fonction de mise à jour globale
+    const updateAuthState = async (session: any) => {
+      let profileData = null;
+      if (session?.user) {
+        profileData = await fetchProfile(session.user.id);
+      }
 
-        if (isMounted) {
-          setState({
-            user: session?.user ?? null,
-            profile: profileData,
-            loading: false,
-            error: null,
-          });
-        }
-      } catch (error: any) {
-        if (isMounted) {
-          setState(prev => ({ ...prev, loading: false, error: error.message }));
-        }
+      if (isMounted) {
+        setState({
+          user: session?.user ?? null,
+          profile: profileData,
+          loading: false, // ICI : On libère l'écran de chargement
+          error: null,
+        });
       }
     };
 
-    // 2. Écouter les changements d'état (Une seule fois au montage)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!isMounted) return;
+    // 2. Initialisation : Récupérer la session actuelle
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      updateAuthState(session);
+    }).catch(err => {
+      console.error("[Auth] Erreur session initiale:", err);
+      if (isMounted) setState(prev => ({ ...prev, loading: false }));
+    });
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          const profileData = newSession?.user ? await loadProfile(newSession.user.id, true) : null;
-          setState({
-            user: newSession?.user ?? null,
-            profile: profileData,
-            loading: false,
-            error: null,
-          });
-        } else if (event === 'SIGNED_OUT') {
-          profileCache.clear();
-          setState({ user: null, profile: null, loading: false, error: null });
-        }
+    // 3. Écouter les changements (Login, Logout, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`[Auth] Événement : ${event}`);
+      
+      if (event === 'SIGNED_OUT') {
+        profileCache.clear();
+        if (isMounted) setState({ user: null, profile: null, loading: false, error: null });
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        updateAuthState(session);
       }
-    );
-
-    initializeAuth();
+    });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [loadProfile]); // Retrait de state.loading des dépendances pour casser la boucle
+  }, [fetchProfile]);
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    profileCache.clear();
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = '/auth/login';
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      profileCache.clear();
+      // Redirection brutale pour nettoyer tous les états React
+      window.location.href = '/auth/login';
+    } catch (err) {
+      console.error("Erreur déconnexion:", err);
+    }
   };
 
   const loginWithGoogle = async () => {
@@ -138,9 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshProfile = async () => {
-    if (!state.user) return;
-    const profileData = await loadProfile(state.user.id, true);
-    setState(prev => ({ ...prev, profile: profileData }));
+    if (state.user) {
+      const data = await fetchProfile(state.user.id, true);
+      setState(prev => ({ ...prev, profile: data }));
+    }
   };
 
   return (
@@ -152,6 +141,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) throw new Error('useAuth doit être utilisé dans AuthProvider');
   return context;
 };
