@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { User, Session } from '@supabase/supabase-js';
+// On pointe vers le fichier client unique que nous avons gardé
+import { supabase } from './supabaseClient';
 
-// Cache simple pour éviter les appels inutiles
-const profileCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 30000;
+// --- CONFIGURATION DU CACHE ---
+const profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
+const CACHE_DURATION = 30000; // 30 secondes
 
-type UserProfile = {
+// --- TYPES ---
+export type UserProfile = {
   id: string;
   email: string | null;
   full_name: string | null;
@@ -14,7 +17,7 @@ type UserProfile = {
 };
 
 interface AuthState {
-  user: any | null;
+  user: User | null;
   profile: UserProfile | null;
   loading: boolean;
   error: string | null;
@@ -32,15 +35,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
-    loading: true, // État initial : chargement
+    loading: true,
     error: null,
   });
 
-  // Fonction pour charger le profil utilisateur
+  // --- LOGIQUE DE RÉCUPÉRATION DU PROFIL ---
   const fetchProfile = useCallback(async (userId: string, force = false) => {
     if (!force) {
       const cached = profileCache.get(userId);
-      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) return cached.data;
+      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+        return cached.data;
+      }
     }
 
     try {
@@ -51,35 +56,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (error) throw error;
+      
       profileCache.set(userId, { data, timestamp: Date.now() });
-      return data;
+      return data as UserProfile;
     } catch (err: any) {
-      console.error('[Auth] Erreur profil:', err.message);
+      console.error('[Auth] Erreur lors de la récupération du profil:', err.message);
       return null;
     }
   }, []);
 
+  // --- GESTION DE L'ÉTAT D'AUTHENTIFICATION ---
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Définir la fonction de mise à jour globale
-    const updateAuthState = async (session: any) => {
-      let profileData = null;
-      if (session?.user) {
-        profileData = await fetchProfile(session.user.id);
+    const updateAuthState = async (session: Session | null) => {
+      const user = session?.user ?? null;
+      let profile = null;
+
+      if (user) {
+        profile = await fetchProfile(user.id);
       }
 
       if (isMounted) {
         setState({
-          user: session?.user ?? null,
-          profile: profileData,
-          loading: false, // ICI : On libère l'écran de chargement
+          user,
+          profile,
+          loading: false,
           error: null,
         });
       }
     };
 
-    // 2. Initialisation : Récupérer la session actuelle
+    // Initialisation : Récupérer la session active au lancement
     supabase.auth.getSession().then(({ data: { session } }) => {
       updateAuthState(session);
     }).catch(err => {
@@ -87,14 +95,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isMounted) setState(prev => ({ ...prev, loading: false }));
     });
 
-    // 3. Écouter les changements (Login, Logout, etc.)
+    // Écouteur en temps réel pour les changements (Login, Logout, Token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[Auth] Événement : ${event}`);
+      console.log(`[Auth] Événement Supabase : ${event}`);
       
       if (event === 'SIGNED_OUT') {
         profileCache.clear();
-        if (isMounted) setState({ user: null, profile: null, loading: false, error: null });
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (isMounted) {
+          setState({ user: null, profile: null, loading: false, error: null });
+        }
+      } else {
+        // Pour SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED
         updateAuthState(session);
       }
     });
@@ -105,23 +116,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [fetchProfile]);
 
+  // --- ACTIONS ---
   const logout = async () => {
     try {
       await supabase.auth.signOut();
       localStorage.clear();
       sessionStorage.clear();
       profileCache.clear();
-      // Redirection brutale pour nettoyer tous les états React
+      // Redirection complète pour réinitialiser l'application proprement
       window.location.href = '/auth/login';
     } catch (err) {
-      console.error("Erreur déconnexion:", err);
+      console.error("[Auth] Erreur lors de la déconnexion:", err);
     }
   };
 
   const loginWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { 
+        redirectTo: `${window.location.origin}/`,
+        queryParams: { prompt: 'select_account' } // Force le choix du compte
+      },
     });
   };
 
@@ -139,8 +154,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// --- HOOK ---
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth doit être utilisé dans AuthProvider');
+  if (!context) {
+    throw new Error('useAuth doit être utilisé à l’intérieur d’un AuthProvider');
+  }
   return context;
 };

@@ -1,47 +1,46 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
-import { Chrome, Mail, Lock, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+// On utilise le client unique que nous avons nettoyé
+import { supabase } from '../../supabaseClient'; 
+import { Chrome, Mail, Lock, ArrowRight, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // 1. Récupérer le jeton de votre backend (Indispensable pour les factures PDF)
+  // URL du backend (À mettre en variable d'env plus tard pour la prod)
+  const BACKEND_URL = 'http://localhost:4242';
+
+  // 1. Synchronisation avec le serveur de facturation
   const syncWithBackend = async (userEmail: string) => {
     try {
-      const response = await fetch('http://localhost:4242/api/auth/login', {
+      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: userEmail }),
       });
       const data = await response.json();
       if (data.token) {
-        localStorage.setItem('token', data.token); // Le jeton pour les factures
+        localStorage.setItem('token', data.token);
       }
     } catch (err) {
-      console.error("Échec de synchronisation avec le serveur de facturation", err);
+      console.error("[Billing] Échec de synchro backend:", err);
     }
   };
 
-  // 2. Redirection selon le rôle
-  const redirectUserByRole = async (userId: string) => {
+  // 2. Logique de redirection selon le profil
+  const handleRedirection = async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
+      const { data: profile } = await supabase
         .from('user_profiles')
         .select('role, is_admin')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error || !profile) {
-        // Si pas de profil, direction dashboard par défaut
-        navigate('/dashboard');
-        return;
-      }
-
-      if (profile.role === 'admin' || profile.is_admin) {
+      if (profile?.role === 'admin' || profile?.is_admin) {
         navigate('/admin');
       } else {
         navigate('/dashboard');
@@ -51,10 +50,11 @@ const LoginPage = () => {
     }
   };
 
-  // 3. Gestion de la connexion Email
+  // 3. Soumission du formulaire
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
     
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -65,13 +65,14 @@ const LoginPage = () => {
       if (error) throw error;
 
       if (data.user) {
-        // SYNCHRONISATION : On récupère le jeton du backend Node.js
         await syncWithBackend(data.user.email!);
-        // REDIRECTION : On vérifie le rôle
-        await redirectUserByRole(data.user.id);
+        await handleRedirection(data.user.id);
       }
     } catch (error: any) {
-      alert("Erreur de connexion : " + error.message);
+      setErrorMessage(error.message === "Invalid login credentials" 
+        ? "Identifiants invalides. Veuillez réessayer." 
+        : error.message
+      );
     } finally {
       setLoading(false);
     }
@@ -82,28 +83,37 @@ const LoginPage = () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/`,
+        queryParams: { prompt: 'select_account' }
       }
     });
-    if (error) alert("Erreur Google: " + error.message);
+    if (error) setErrorMessage(error.message);
   };
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-6 relative overflow-hidden bg-[#0f172a]">
       {/* Background Aura */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-600/20 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-600/20 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="relative z-10 bg-slate-900/60 backdrop-blur-2xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 w-full max-w-md shadow-2xl">
         
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <ShieldCheck className="text-cyan-400 w-12 h-12" />
           </div>
           <h2 className="text-4xl font-black text-white tracking-tighter mb-2 uppercase italic">
             Connexion
           </h2>
-          <p className="text-slate-400 font-medium text-sm">Accédez à votre espace OneWayTicket</p>
+          <p className="text-slate-400 font-medium text-sm">Espace sécurisé OneWayTicket</p>
         </div>
+
+        {/* Affichage des erreurs */}
+        {errorMessage && (
+          <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-400 text-sm">
+            <AlertCircle size={18} />
+            <p>{errorMessage}</p>
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="relative">
@@ -135,15 +145,20 @@ const LoginPage = () => {
             disabled={loading}
             className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black uppercase tracking-widest py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {loading ? <Loader2 className="animate-spin" /> : 'Se connecter'}
-            {!loading && <ArrowRight size={20} />}
+            {loading ? <Loader2 className="animate-spin" /> : (
+              <>
+                Se connecter <ArrowRight size={20} />
+              </>
+            )}
           </button>
         </form>
 
         <div className="relative my-8">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5"></span></div>
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-white/5"></span>
+          </div>
           <div className="relative flex justify-center text-[10px] uppercase tracking-[0.3em]">
-            <span className="bg-[#111827] px-4 text-slate-500 font-black">Ou</span>
+            <span className="bg-slate-900 px-4 text-slate-500 font-black">Ou</span>
           </div>
         </div>
 

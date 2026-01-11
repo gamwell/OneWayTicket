@@ -1,24 +1,23 @@
 import React, { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-// 1. IMPORT AJOUTÉ POUR VERCEL
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
-// --- COMPOSANTS CRITIQUES ---
+// --- COMPOSANTS DE STRUCTURE ---
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute"; 
 import { PublicRoute } from "./components/PublicRoute";
 import { AutoLogout } from "./components/AutoLogout"; 
 
-// --- PAGES (Lazy Loading) ---
-const HomePage = lazy(() => import("./pages/HomePage"));
-const EventsPage = lazy(() => import("./pages/EventsPage"));
-const CartPage = lazy(() => import("./pages/CartPage"));
-const SuccessPage = lazy(() => import("./pages/SuccessPage"));
-const LoginPage = lazy(() => import("./pages/auth/LoginPage")); 
+// --- PAGES (Lazy Loading pour optimiser les performances) ---
+const HomePage      = lazy(() => import("./pages/HomePage"));
+const EventsPage    = lazy(() => import("./pages/EventsPage"));
+const CartPage      = lazy(() => import("./pages/CartPage"));
+const SuccessPage   = lazy(() => import("./pages/SuccessPage"));
+const LoginPage     = lazy(() => import("./pages/auth/LoginPage")); 
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 
-// --- LOADER ---
+// --- COMPOSANT LOADER (Affiché pendant le chargement des pages) ---
 const PageLoader = () => (
   <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-[9999]">
     <div className="relative w-16 h-16">
@@ -36,45 +35,48 @@ const PageLoader = () => (
 export default function App() {
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans">
+      {/* Gestion de la déconnexion automatique */}
       <AutoLogout />
       
       <Suspense fallback={<PageLoader />}>
         <Navbar />
+        
         <main className="flex-grow relative pt-20">
-            <Routes>
-              {/* --- ROUTES PUBLIQUES --- */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/cart" element={<CartPage />} />
+          <Routes>
+            {/* --- ROUTES PUBLIQUES --- */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/events" element={<EventsPage />} />
+            <Route path="/cart" element={<CartPage />} />
 
-              {/* --- ROUTE AUTH (PublicRoute empêche d'aller sur login si déjà connecté) --- */}
-              <Route path="/auth/login" element={
-                <PublicRoute>
-                  <LoginPage />
-                </PublicRoute>
-              } />
+            {/* --- ROUTE AUTH (Redirige vers Dashboard si déjà connecté) --- */}
+            <Route path="/auth/login" element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            } />
 
-              {/* --- ROUTES PROTÉGÉES (Nécessitent une connexion) --- */}
-              <Route path="/success" element={
-                <ProtectedRoute>
-                  <SuccessPage />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } />
+            {/* --- ROUTES PROTÉGÉES (Connexion requise) --- */}
+            <Route path="/success" element={
+              <ProtectedRoute>
+                <SuccessPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } />
 
-              {/* --- REDIRECTION PAR DÉFAUT (Si l'URL n'existe pas) --- */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            {/* --- REDIRECTION PAR DÉFAUT --- */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </main>
+
         <Footer />
       </Suspense>
 
-      {/* 2. COMPOSANT AJOUTÉ ICI (ne se voit pas, mais envoie les données) */}
+      {/* Mesure des performances Vercel */}
       <SpeedInsights />
     </div>
   );
