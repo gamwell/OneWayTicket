@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+// ✅ CORRECTION ICI : On pointe vers le bon fichier client
+import { supabase } from '../lib/supabaseClient';
 import { Link } from 'react-router-dom';
 import { Ticket, Calendar, Users, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 

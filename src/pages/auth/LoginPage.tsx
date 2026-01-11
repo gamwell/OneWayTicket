@@ -1,184 +1,141 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-// On utilise le client unique que nous avons nettoyé
-import { supabase } from '../../supabaseClient'; 
-import { Chrome, Mail, Lock, ArrowRight, Loader2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock } from 'lucide-react';
 
-const LoginPage = () => {
+// 1. IMPORT DIRECT DE SUPABASE
+import { supabase } from '../../lib/supabaseClient'; 
+import { useAuth } from '../../contexts/AuthContext'; 
+
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const auth = useAuth(); 
   const navigate = useNavigate();
 
-  // URL du backend (À mettre en variable d'env plus tard pour la prod)
-  const BACKEND_URL = 'http://localhost:4242';
-
-  // 1. Synchronisation avec le serveur de facturation
-  const syncWithBackend = async (userEmail: string) => {
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail }),
-      });
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-    } catch (err) {
-      console.error("[Billing] Échec de synchro backend:", err);
-    }
-  };
-
-  // 2. Logique de redirection selon le profil
-  const handleRedirection = async (userId: string) => {
-    try {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('role, is_admin')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (profile?.role === 'admin' || profile?.is_admin) {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      navigate('/dashboard');
-    }
-  };
-
-  // 3. Soumission du formulaire
+  // --- GESTION LOGIN EMAIL ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage(null);
-    
+    setErrorMsg('');
+
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      if (!auth.signIn) throw new Error("Erreur interne: Fonction signIn introuvable");
+      
+      const { error } = await auth.signIn(email, password);
       if (error) throw error;
-
-      if (data.user) {
-        await syncWithBackend(data.user.email!);
-        await handleRedirection(data.user.id);
-      }
+      navigate('/'); 
     } catch (error: any) {
-      setErrorMessage(error.message === "Invalid login credentials" 
-        ? "Identifiants invalides. Veuillez réessayer." 
-        : error.message
-      );
+      console.error("Erreur de login:", error);
+      setErrorMsg(error.message || "Erreur lors de la connexion.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 4. Connexion Google
-  const loginWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-        queryParams: { prompt: 'select_account' }
-      }
-    });
-    if (error) setErrorMessage(error.message);
+  // --- GESTION GOOGLE ---
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) throw error;
+      
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg("Erreur Google : " + error.message);
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-6 relative overflow-hidden bg-[#0f172a]">
-      {/* Background Aura */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-600/20 blur-[120px] rounded-full pointer-events-none" />
-
-      <div className="relative z-10 bg-slate-900/60 backdrop-blur-2xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 w-full max-w-md shadow-2xl">
+    // 🎨 FOND CHANGE ICI : Couleur sombre (#0f172a) pour matcher la Navbar
+    <div className="min-h-[90vh] flex items-center justify-center bg-[#0f172a] p-5">
+      
+      {/* 🎨 CARTE : Fond sombre transparent + Bordure subtile */}
+      <div className="bg-slate-800/40 backdrop-blur-xl p-10 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700/50">
         
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <ShieldCheck className="text-cyan-400 w-12 h-12" />
-          </div>
-          <h2 className="text-4xl font-black text-white tracking-tighter mb-2 uppercase italic">
-            Connexion
-          </h2>
-          <p className="text-slate-400 font-medium text-sm">Espace sécurisé OneWayTicket</p>
-        </div>
+        {/* Titre en Blanc */}
+        <h2 className="text-3xl font-bold text-center mb-4 text-white">Connexion</h2>
+        <p className="text-center text-slate-400 mb-8">Connectez-vous pour continuer</p>
 
-        {/* Affichage des erreurs */}
-        {errorMessage && (
-          <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-400 text-sm">
-            <AlertCircle size={18} />
-            <p>{errorMessage}</p>
+        {errorMsg && (
+          <div className="mb-4 p-3 bg-red-500/20 text-red-200 border border-red-500/50 rounded-lg text-sm text-center">
+            {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-            <input 
-              type="email" 
-              placeholder="Email" 
-              className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-all"
+            <Mail className="absolute left-3 top-3 w-5 h-5 text-cyan-400" />
+            <input
+              type="email"
+              placeholder="Votre email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-            <input 
-              type="password" 
-              placeholder="Mot de passe" 
-              className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition-all"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              // 🎨 INPUTS : Fond foncé, texte blanc, bordure grise sombre
+              className="w-full py-3 px-10 rounded-xl bg-slate-900/50 border border-slate-600 text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
             />
           </div>
 
-          <button 
-            type="submit" 
+          <div className="relative">
+            <Lock className="absolute left-3 top-3 w-5 h-5 text-cyan-400" />
+            <input
+              type="password"
+              placeholder="Mot de passe"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full py-3 px-10 rounded-xl bg-slate-900/50 border border-slate-600 text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-500 transition-all"
+            />
+          </div>
+
+          <button
+            type="submit"
             disabled={loading}
-            className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black uppercase tracking-widest py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            // Bouton Cyan/Bleu plus vif pour ressortir sur le noir
+            className="w-full py-3 bg-cyan-600 text-white font-bold rounded-xl hover:bg-cyan-500 transition-colors disabled:opacity-50 shadow-lg shadow-cyan-900/20"
           >
-            {loading ? <Loader2 className="animate-spin" /> : (
-              <>
-                Se connecter <ArrowRight size={20} />
-              </>
-            )}
+            {loading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
 
-        <div className="relative my-8">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-white/5"></span>
-          </div>
-          <div className="relative flex justify-center text-[10px] uppercase tracking-[0.3em]">
-            <span className="bg-slate-900 px-4 text-slate-500 font-black">Ou</span>
-          </div>
-        </div>
-
-        <button 
-          onClick={loginWithGoogle}
-          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border border-white/10 rounded-2xl font-black uppercase text-xs text-white hover:bg-white hover:text-slate-900 transition-all"
+        <button
+          onClick={handleGoogleLogin}
+          type="button"
+          disabled={loading}
+          // Bouton Google blanc pour le contraste
+          className="w-full mt-4 py-3 bg-white text-slate-900 font-medium rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors disabled:opacity-50"
         >
-          <Chrome size={18} className="text-cyan-400" />
-          Continuer avec Google
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          {loading ? 'Connexion...' : 'Se connecter avec Google'}
         </button>
 
-        <p className="mt-10 text-center text-slate-500 text-sm font-medium">
-          Pas encore de compte ?{' '}
-          <Link to="/register" className="text-cyan-400 font-bold hover:text-cyan-300">
-            S'inscrire
+        <p className="text-center mt-6 text-slate-400 text-sm">
+          Pas de compte ?{' '}
+          <Link to="/auth/register" className="text-cyan-400 font-semibold hover:text-cyan-300">
+            Inscrivez-vous
           </Link>
         </p>
       </div>
     </div>
   );
-};
-
-export default LoginPage;
+}

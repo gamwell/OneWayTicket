@@ -8,10 +8,19 @@ const EVENT_IMAGES: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=800",
     "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&q=80&w=800"
   ],
+  // ✅ AJOUT : On utilise vos images de musique pour les concerts
+  concert: [
+    "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=800",
+    "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&q=80&w=800"
+  ],
   sport: [
     "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=800"
   ],
   theatre: [
+    "https://images.unsplash.com/photo-1503095396549-807759245b35?auto=format&fit=crop&q=80&w=800"
+  ],
+  // ✅ AJOUT : On utilise votre image de théâtre pour les spectacles
+  spectacle: [
     "https://images.unsplash.com/photo-1503095396549-807759245b35?auto=format&fit=crop&q=80&w=800"
   ],
   voyage: [
@@ -43,20 +52,24 @@ const EVENT_IMAGES: Record<string, string[]> = {
 };
 
 export function getEventImage(category: string): string {
+  // Sécurité si category est vide/null
   if (!category) return EVENT_IMAGES.default[0];
 
   let cleanCategory = category.toLowerCase().trim();
   
-  // Suppression des accents
+  // Suppression des accents (ex: Théâtre -> theatre)
   cleanCategory = cleanCategory.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+  // Recherche directe
   let images = EVENT_IMAGES[cleanCategory];
 
+  // Recherche intelligente (si le nom contient le mot clé, ex: "Super Concert" -> "concert")
   if (!images) {
     const key = Object.keys(EVENT_IMAGES).find(k => cleanCategory.includes(k));
     images = key ? EVENT_IMAGES[key] : EVENT_IMAGES.default;
   }
 
+  // Sélection aléatoire d'une image dans la liste
   const randomIndex = Math.floor(Math.random() * images.length);
   return images[randomIndex];
 }

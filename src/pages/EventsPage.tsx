@@ -2,11 +2,12 @@
 
 import type React from "react"
 import { useEffect, useState, useCallback } from "react"
-import { supabase } from "../lib/supabase"
+// ✅ CORRECTION ICI : On pointe vers le bon client
+import { supabase } from "../lib/supabaseClient"
 import { Loader2, Music, Trophy, Theater, Plane, Cpu, SearchX, RefreshCcw, Star, LayoutGrid } from "lucide-react"
 import { EventCard } from "@/components/events/EventCard"
 
-// ✅ IMPORT DE LA LOGIQUE D'IMAGES (Depuis votre fichier utilitaire)
+// ✅ IMPORT DE LA LOGIQUE D'IMAGES
 import { getEventImage } from "../utils/galleryEvents"
 
 // --- MAPPING DES ICÔNES ---
@@ -82,17 +83,16 @@ const EventsPage = () => {
   return (
     <div className="min-h-screen w-full max-w-full flex flex-col items-center overflow-x-hidden">
       {/* --- HEADER --- */}
-<div className="w-full max-w-full bg-gradient-to-b from-slate-900 via-[#070b14] to-[#070b14] pt-16 pb-8 flex flex-col items-center shadow-2xl relative z-10 overflow-visible">
+      <div className="w-full max-w-full bg-gradient-to-b from-slate-900 via-[#070b14] to-[#070b14] pt-16 pb-8 flex flex-col items-center shadow-2xl relative z-10 overflow-visible">
    
-	<header className="w-full px-6 md:px-12 mb-8 text-center overflow-visible">
-       <h1 className="font-montserrat text-3xl md:text-5xl font-black uppercase tracking-tight">
-           EXPLORER <br />
-         <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600">
-           L'AVENTURE
-         </span>
-       </h1>
-
-    </header>
+        <header className="w-full px-6 md:px-12 mb-8 text-center overflow-visible">
+           <h1 className="font-montserrat text-3xl md:text-5xl font-black uppercase tracking-tight">
+               EXPLORER <br />
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600">
+               L'AVENTURE
+             </span>
+           </h1>
+        </header>
 
         {/* NAVIGATION */}
         <nav className="flex flex-wrap justify-center gap-4 px-4 max-w-7xl mx-auto w-full max-w-full overflow-hidden">

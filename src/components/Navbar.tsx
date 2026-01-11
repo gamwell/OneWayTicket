@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import { supabase } from "../lib/supabase";
+// ✅ CORRECTION ICI : On pointe vers le bon fichier client
+import { supabase } from "../lib/supabaseClient"; 
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);

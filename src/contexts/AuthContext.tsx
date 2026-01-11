@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-// On pointe vers le fichier client unique que nous avons gardé
-import { supabase } from './supabaseClient';
+// ✅ CORRECTION ICI : On remonte d'un dossier (..) pour aller dans (lib)
+import { supabase } from '../lib/supabaseClient';
 
 // --- CONFIGURATION DU CACHE ---
 const profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
