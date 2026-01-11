@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 export default defineConfig({
+  base: '/', // <--- C'EST CETTE LIGNE QUI CORRIGE LES ERREURS 404
   plugins: [react()],
   resolve: {
     alias: {
@@ -14,6 +15,7 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: 'dist', // On force le dossier de sortie à "dist" par sécurité
     minify: "terser",
     terserOptions: {
       compress: {

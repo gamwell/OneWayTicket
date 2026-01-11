@@ -1,13 +1,10 @@
 // src/supabaseClient.ts
-import { createClient } from '@supabase/supabase-js';
-
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log("Tentative de connexion Supabase avec URL :", supabaseUrl);
-
+// Vérification de sécurité (C'est probablement ici que votre erreur se déclenche)
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("❌ ERREUR : Les variables d'environnement ne sont pas chargées !");
+  throw new Error('Missing Supabase environment variables')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
