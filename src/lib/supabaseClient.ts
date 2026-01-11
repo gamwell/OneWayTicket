@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // 1. On récupère les variables
-const supabaseUrl = "https://vnijdjjzgruujvagrihu.supabase.co"
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuaWpkamp6Z3J1dWp2YWdyaWh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0ODU5MDksImV4cCI6MjA3NzA2MTkwOX0.HQdSPYN0mtquGlDJmYASSasaiP5JbA3Lt8R98RX-TRc"
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_V2
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_V2
 
 // 2. DEBUG : On affiche ce qu'on reçoit dans la console (F12)
 console.log("--- DEBUG SUPABASE ---")
