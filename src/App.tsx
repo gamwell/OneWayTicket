@@ -1,5 +1,7 @@
 import React, { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+// 1. IMPORT AJOUTÉ POUR VERCEL
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // --- COMPOSANTS CRITIQUES ---
 import Navbar from "./components/Navbar";
@@ -71,6 +73,9 @@ export default function App() {
         </main>
         <Footer />
       </Suspense>
+
+      {/* 2. COMPOSANT AJOUTÉ ICI (ne se voit pas, mais envoie les données) */}
+      <SpeedInsights />
     </div>
   );
 }
