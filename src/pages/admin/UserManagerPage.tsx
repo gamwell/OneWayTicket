@@ -60,8 +60,9 @@ function UserManagerPage() {
     loadUsers();
   };
 
-  if (loading)
+  if (loading) {
     return <div className="text-white text-center mt-10">Chargement…</div>;
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-white py-10 px-6">
@@ -69,7 +70,15 @@ function UserManagerPage() {
 
       <div className="space-y-4">
         {users.map((u) => (
-          <div
-            key={u.id} />))}
-      </></>);
+          <div key={u.id}>
+            {/* Ajoutez ici le contenu pour afficher chaque utilisateur */}
+            <p>{u.email}</p>
+            {/* Ajoutez d'autres éléments d'interface utilisateur, comme des boutons pour changer de rôle ou d'administrateur */}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
+
+export default UserManagerPage;

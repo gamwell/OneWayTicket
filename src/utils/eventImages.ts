@@ -46,6 +46,7 @@ export function getEventImage(category: string): string {
   if (!category) return EVENT_IMAGES.default[0];
 
   let cleanCategory = category.toLowerCase().trim();
+  
   // Suppression des accents
   cleanCategory = cleanCategory.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
