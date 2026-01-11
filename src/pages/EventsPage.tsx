@@ -7,7 +7,7 @@ import { Loader2, Music, Trophy, Theater, Plane, Cpu, SearchX, RefreshCcw, Star,
 import { EventCard } from "@/components/events/EventCard"
 
 // ✅ IMPORT DE LA LOGIQUE D'IMAGES (Depuis votre fichier utilitaire)
-import { getEventImage } from "../utils/EventImages"
+import { getEventImage } from "../utils/imagestEvents"
 
 // --- MAPPING DES ICÔNES ---
 const ICON_MAP: Record<string, React.ReactNode> = {
