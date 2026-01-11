@@ -1,11 +1,23 @@
-// src/supabaseClient.ts
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+import { createClient } from '@supabase/supabase-js'
 
-// Vérification de sécurité (C'est probablement ici que votre erreur se déclenche)
+// 1. On récupère les variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// 2. DEBUG : On affiche ce qu'on reçoit dans la console (F12)
+console.log("--- DEBUG SUPABASE ---")
+console.log("URL reçue :", supabaseUrl ? "OK (Présente)" : "ERREUR (Vide !)")
+console.log("KEY reçue :", supabaseAnonKey ? "OK (Présente)" : "ERREUR (Vide !)")
+
+// 3. Gestion d'erreur plus douce (pour ne pas casser le build si vide)
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+  console.error("⚠️ ATTENTION : Les variables Supabase sont manquantes.")
+  // On met des valeurs vides temporaires pour éviter le crash blanc, 
+  // mais la connexion ne marchera pas tant que ce n'est pas réglé sur Vercel.
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+// 4. Création du client (avec une sécurité en cas de vide)
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.url", 
+  supabaseAnonKey || "placeholder-key"
+)
