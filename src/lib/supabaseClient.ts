@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // 1. On récupère les variables (Version V2 pour forcer le cache Vercel)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_V2
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_V2
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_V3
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_V3
 
 // 2. DEBUG : On affiche ce qu'on reçoit dans la console (F12)
 console.log("--- DEBUG SUPABASE V2 ---")
