@@ -1,12 +1,9 @@
-/* ============================================================
-   0. IMPORT POLICE MODERNE
-   ============================================================ */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
-
+/* 0. IMPORT POLICE MODERNE
+   ============================================================ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 
 /* ============================================================
    1. VARIABLES & THÈME (DESIGN SYSTEM)
