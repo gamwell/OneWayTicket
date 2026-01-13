@@ -11,7 +11,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 
-// ✅ CORRECTION FINALE : On pointe vers le bon fichier 'supabase'
+// ✅ ASSUREZ-VOUS QUE CE CHEMIN EST EXACT ET SAUVEGARDÉ
 import { supabase } from "../lib/supabase"; 
 
 const Navbar = () => {
@@ -23,7 +23,6 @@ const Navbar = () => {
   const { user, profile, logout } = useAuth();
   const { cart } = useCart();
 
-  // 1. Vérification Admin
   const isAdmin = useMemo(() => {
     return (
       profile?.role === "admin" ||
@@ -32,8 +31,8 @@ const Navbar = () => {
     );
   }, [profile]);
 
-  // 2. Récupération des vérifications en attente
   const fetchPendingVerifications = useCallback(async () => {
+    // Sécurité supplémentaire : vérifier si supabase est bien défini
     if (!user || !isAdmin || !supabase) return; 
 
     try {
@@ -44,11 +43,10 @@ const Navbar = () => {
 
       if (!error && count !== null) setPendingCount(count);
     } catch (err) {
-      console.log("[Navbar] Erreur silencieuse lors de la récupération des notifs");
+      console.log("[Navbar] Erreur récupération notifications");
     }
   }, [isAdmin, user]);
 
-  // 3. Temps réel pour les notifications Admin
   useEffect(() => {
     if (!user || !isAdmin || !supabase) {
       setPendingCount(0);
@@ -67,7 +65,10 @@ const Navbar = () => {
       .subscribe();
 
     return () => {
-      if (supabase) supabase.removeChannel(channel);
+      // ✅ Correction : vérification avant suppression
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [isAdmin, user, fetchPendingVerifications]);
 
@@ -103,7 +104,6 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
-          {/* LOGO */}
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 bg-gradient-to-tr from-pink-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-all">
               <span className="text-white font-black text-xl italic">O</span>
@@ -113,7 +113,6 @@ const Navbar = () => {
             </span>
           </Link>
 
-          {/* DESKTOP MENU */}
           <div className="hidden md:flex items-center space-x-2">
             {navigation.map((item) => (
               <Link
@@ -133,7 +132,6 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* ACTIONS */}
           <div className="flex items-center gap-4">
             <button onClick={() => navigate("/cart")} className="p-3 text-slate-400 hover:text-cyan-400 relative">
               <ShoppingCart size={22} />
@@ -149,7 +147,8 @@ const Navbar = () => {
                 <Link to="/profile" className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
                   <User size={14} className="text-slate-400" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">
-                    {profile?.full_name?.split(" ")[0] || "Profil"}
+                    {/* ✅ Sécurité sur le split */}
+                    {profile?.full_name ? profile.full_name.split(" ")[0] : "Profil"}
                   </span>
                 </Link>
                 <button onClick={handleLogout} className="p-3 text-slate-500 hover:text-rose-500">
@@ -169,7 +168,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* MOBILE MENU */}
       {isOpen && (
         <div className="md:hidden bg-[#0f172a] border-b border-white/10 p-6 space-y-3">
           {navigation.map((item) => (
