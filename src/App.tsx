@@ -3,25 +3,28 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // --- CONFIGURATION ---
-// On importe le client pour vérifier s'il est chargé
 import { supabase } from "./lib/supabase"; 
 
 // --- COMPOSANTS DE STRUCTURE ---
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute"; 
+import { AdminRoute } from "./components/AdminRoute"; // ✅ AJOUTÉ
 import { PublicRoute } from "./components/PublicRoute";
 import { AutoLogout } from "./components/AutoLogout"; 
 
 // --- PAGES (Lazy Loading) ---
-const HomePage      = lazy(() => import("./pages/HomePage"));
-const EventsPage    = lazy(() => import("./pages/EventsPage"));
-const CartPage      = lazy(() => import("./pages/CartPage"));
-const SuccessPage   = lazy(() => import("./pages/SuccessPage"));
-const LoginPage     = lazy(() => import("./pages/auth/LoginPage")); 
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const Register      = lazy(() => import("./pages/auth/Register")); 
-const AuthCallback  = lazy(() => import("./pages/auth/Callback")); 
+const HomePage           = lazy(() => import("./pages/HomePage"));
+const EventsPage         = lazy(() => import("./pages/EventsPage"));
+const CartPage           = lazy(() => import("./pages/CartPage"));
+const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
+const LoginPage          = lazy(() => import("./pages/auth/LoginPage")); 
+const Register           = lazy(() => import("./pages/auth/Register")); 
+const AuthCallback       = lazy(() => import("./pages/auth/Callback")); 
+
+const DashboardPivot     = lazy(() => import("./pages/DashboardPivot"));
+const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-[9999]">
@@ -38,7 +41,6 @@ const PageLoader = () => (
 );
 
 export default function App() {
-  // AJOUT : Diagnostic au démarrage
   useEffect(() => {
     console.log("🚀 App démarrée, vérification Supabase...");
     if (!supabase) {
@@ -75,17 +77,30 @@ export default function App() {
 
             <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* --- ROUTES PROTÉGÉES --- */}
+            {/* --- ROUTES PROTÉGÉES (COMMUNES) --- */}
             <Route path="/success" element={
               <ProtectedRoute>
                 <SuccessPage />
               </ProtectedRoute>
             } />
-            
+
             <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardPivot />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/dashboard/user" element={
               <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
+            } />
+
+            {/* --- VUE SPÉCIFIQUE ADMIN (CORRIGÉE) --- */}
+            <Route path="/admin/dashboard" element={
+              <AdminRoute> {/* ✅ REMPLACÉ ProtectedRoute par AdminRoute */}
+                <AdminDashboardPage />
+              </AdminRoute>
             } />
 
             {/* --- REDIRECTION PAR DÉFAUT --- */}

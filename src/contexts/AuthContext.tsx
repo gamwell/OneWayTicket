@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 
-// ✅ CORRECTION : On utilise le fichier centralisé 'supabase' et non 'supabaseClient'
+// ✅ CORRECTION : Importation du client unique 'supabase'
 import { supabase } from '../lib/supabase'; 
 
 // --- TYPES ---
@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
-      // ✅ Vérification si supabase est bien initialisé
+      // Sécurité si Supabase est null (mauvaise config variables d'env)
       if (!supabase) throw new Error("Supabase client non disponible");
 
       const { data, error } = await supabase
@@ -107,7 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (isMounted) setState(prev => ({ ...prev, loading: false, error: err.message }));
     });
 
-    // 2. Écouteur en temps réel
+    // 2. Écouteur en temps réel (Auth State Change)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         profileCache.clear();
@@ -130,6 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.clear();
       sessionStorage.clear();
       profileCache.clear();
+      // On redirige proprement vers le login
       window.location.assign('/auth/login');
     } catch (err) {
       console.error("[Auth] Erreur logout:", err);
@@ -142,7 +143,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { 
-        redirectTo: `${origin}/auth/callback`, // ✅ Correction : pointe vers callback
+        redirectTo: `${origin}/auth/callback`,
         queryParams: { access_type: 'offline', prompt: 'consent' }
       },
     });
