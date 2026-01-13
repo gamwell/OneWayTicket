@@ -1,35 +1,29 @@
-name: Deploy React App to cPanel
+name: 🚀 Déploiement FTP
 
 on:
   push:
     branches:
-      - main
+      - main  # Le déploiement se lance quand vous envoyez du code sur 'main'
 
 jobs:
-  build-and-deploy:
+  web-deploy:
+    name: Build et Deploy
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout code
+      - name: 🚚 Récupérer le code
         uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Build Project
+
+      - name: 🛠️ Build du projet
         run: |
           npm install
           npm run build
-        env:
-          CI: false
-      
-      - name: FTP Deploy
+
+      - name: 📂 Envoi via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: /home/quarksydigital.com/  # ← Changement ici !
+          server-dir: /home/quarksydigital.com/
