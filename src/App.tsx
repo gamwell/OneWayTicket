@@ -9,7 +9,7 @@ import { supabase } from "./lib/supabase";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { ProtectedRoute } from "./components/ProtectedRoute"; 
-import { AdminRoute } from "./components/AdminRoute"; // ✅ AJOUTÉ
+import { AdminRoute } from "./components/AdminRoute"; 
 import { PublicRoute } from "./components/PublicRoute";
 import { AutoLogout } from "./components/AutoLogout"; 
 
@@ -22,9 +22,13 @@ const LoginPage          = lazy(() => import("./pages/auth/LoginPage"));
 const Register           = lazy(() => import("./pages/auth/Register")); 
 const AuthCallback       = lazy(() => import("./pages/auth/Callback")); 
 
+// Pages de Redirection et Dashboards
 const DashboardPivot     = lazy(() => import("./pages/DashboardPivot"));
 const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
+
+// ✅ AJOUT : Page de création d'événement
+const NewEventPage       = lazy(() => import("./pages/admin/NewEventPage"));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-[9999]">
@@ -84,22 +88,31 @@ export default function App() {
               </ProtectedRoute>
             } />
 
+            {/* Aiguillage vers Dashboard User ou Admin selon le profil */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardPivot />
               </ProtectedRoute>
             } />
 
+            {/* Dashboard spécifique pour les Clients */}
             <Route path="/dashboard/user" element={
               <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
             } />
 
-            {/* --- VUE SPÉCIFIQUE ADMIN (CORRIGÉE) --- */}
+            {/* --- ESPACE ADMINISTRATEUR (SÉCURISÉ) --- */}
             <Route path="/admin/dashboard" element={
-              <AdminRoute> {/* ✅ REMPLACÉ ProtectedRoute par AdminRoute */}
+              <AdminRoute>
                 <AdminDashboardPage />
+              </AdminRoute>
+            } />
+
+            {/* ✅ NOUVELLE ROUTE : Création d'événement (SÉCURISÉE) */}
+            <Route path="/admin/events/new" element={
+              <AdminRoute>
+                <NewEventPage />
               </AdminRoute>
             } />
 
