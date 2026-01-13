@@ -9,15 +9,18 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicRoute } from "./components/PublicRoute";
 import { AutoLogout } from "./components/AutoLogout"; 
 
-// --- PAGES (Lazy Loading pour optimiser les performances) ---
+// --- PAGES (Lazy Loading) ---
 const HomePage      = lazy(() => import("./pages/HomePage"));
 const EventsPage    = lazy(() => import("./pages/EventsPage"));
 const CartPage      = lazy(() => import("./pages/CartPage"));
 const SuccessPage   = lazy(() => import("./pages/SuccessPage"));
 const LoginPage     = lazy(() => import("./pages/auth/LoginPage")); 
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const Register      = lazy(() => import("./pages/auth/Register")); 
 
-// --- COMPOSANT LOADER (Affiché pendant le chargement des pages) ---
+// CORRECTION ICI : Le fichier s'appelle Callback.tsx, on l'importe donc sous ce nom
+const AuthCallback  = lazy(() => import("./pages/auth/Callback")); 
+
 const PageLoader = () => (
   <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-[9999]">
     <div className="relative w-16 h-16">
@@ -35,7 +38,6 @@ const PageLoader = () => (
 export default function App() {
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans">
-      {/* Gestion de la déconnexion automatique */}
       <AutoLogout />
       
       <Suspense fallback={<PageLoader />}>
@@ -48,14 +50,23 @@ export default function App() {
             <Route path="/events" element={<EventsPage />} />
             <Route path="/cart" element={<CartPage />} />
 
-            {/* --- ROUTE AUTH (Redirige vers Dashboard si déjà connecté) --- */}
+            {/* --- AUTHENTIFICATION --- */}
             <Route path="/auth/login" element={
               <PublicRoute>
                 <LoginPage />
               </PublicRoute>
             } />
 
-            {/* --- ROUTES PROTÉGÉES (Connexion requise) --- */}
+            <Route path="/auth/register" element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            } />
+
+            {/* ROUTE CALLBACK : L'URL reste /auth/callback pour Supabase */}
+            <Route path="/auth/callback" element={<AuthCallback />} />
+
+            {/* --- ROUTES PROTÉGÉES --- */}
             <Route path="/success" element={
               <ProtectedRoute>
                 <SuccessPage />
@@ -75,8 +86,6 @@ export default function App() {
 
         <Footer />
       </Suspense>
-
-      {/* Mesure des performances Vercel */}
       <SpeedInsights />
     </div>
   );

@@ -23,7 +23,7 @@ const CartPage = () => {
     // 1. Protection : Utilisateur connecté ?
     if (!user) {
       alert("Vous devez être connecté pour finaliser votre achat !");
-      navigate('/auth/login', { state: { from: { pathname: '/cart' } } });
+      navigate('/auth/login', { state: { from: '/cart' } });
       return;
     }
 
@@ -33,59 +33,31 @@ const CartPage = () => {
 
     try {
       /**
-       * ÉTAPE A : Pré-enregistrement des billets dans Supabase
-       * Nous créons les billets avec un statut 'pending' ou similaire si nécessaire.
+       * ÉTAPE : Appel de l'Edge Function Supabase
+       * On utilise 'invoke' qui gère automatiquement l'authentification.
        */
-      const ticketsToInsert = cart.map(item => ({
-        user_id: user.id,
-        event_id: item.id, 
-        final_price: item.price,
-        // On génère un hash unique temporaire pour le QR Code
-        qr_code_hash: "OWT-" + Math.random().toString(36).substring(2, 15).toUpperCase(),
-        scanned_at: null // Défini par défaut, mais explicite pour la clarté
-      }));
-
-      const { error: dbError } = await supabase
-        .from('tickets')
-        .insert(ticketsToInsert);
-
-      if (dbError) {
-        console.error("Erreur DB Supabase:", dbError);
-        throw new Error("Impossible de préparer vos billets. Veuillez réessayer.");
-      }
-
-      /**
-       * ÉTAPE B : Lancement de la session Stripe
-       */
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4242';
-      
-      const response = await fetch(`${backendUrl}/create-checkout-session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          items: cart,
-          email: user.email,
-          userId: user.id 
-        }), 
+      const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+        body: { 
+          // On envoie le priceId du premier article pour l'exemple
+          // Si vous avez plusieurs articles, votre Edge Function devra boucler sur 'cart'
+          priceId: cart[0].stripe_price_id, 
+          cartItems: cart, // Optionnel : pour gérer plusieurs items dans la fonction
+          userEmail: user.email
+        },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erreur de communication avec Stripe");
-      }
+      if (error) throw error;
 
-      const data = await response.json();
-
-      if (data.url) {
-        // Redirection vers l'interface de paiement Stripe
+      // 2. Redirection vers l'URL Stripe retournée par l'Edge Function
+      if (data?.url) {
         window.location.href = data.url;
       } else {
-        throw new Error("L'URL de paiement n'a pas été générée.");
+        throw new Error("L'URL de paiement n'a pas été générée par le système.");
       }
       
     } catch (error: any) {
       console.error("Erreur générale paiement:", error);
-      alert(error.message || "Une erreur technique est survenue.");
+      alert(error.message || "Une erreur technique est survenue avec le service de paiement.");
     } finally {
       setIsLoading(false);
     }
@@ -94,13 +66,13 @@ const CartPage = () => {
   // État : Panier Vide
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-4 font-sans">
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-4 font-sans text-white">
         <div className="bg-white/5 p-12 rounded-[3rem] border border-white/10 text-center max-w-md backdrop-blur-xl">
           <ShoppingBag className="mx-auto text-slate-700 mb-6" size={64} />
-          <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-4">Votre panier est vide</h2>
+          <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-4">Panier vide</h2>
           <button 
             onClick={() => navigate('/events')}
-            className="px-8 py-4 bg-cyan-500 text-slate-900 font-black rounded-2xl uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-cyan-500/20"
+            className="px-8 py-4 bg-cyan-500 text-slate-900 font-black rounded-2xl uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
           >
             Explorer les Events
           </button>
@@ -119,7 +91,7 @@ const CartPage = () => {
             <ArrowLeft size={16} /> Retour boutique
           </button>
           <h1 className="text-4xl font-black italic tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-            Checkout
+            Mon <span className="text-cyan-400">Panier</span>
           </h1>
         </div>
         
@@ -160,12 +132,12 @@ const CartPage = () => {
                   <span>{total} €</span>
                 </div>
                 <div className="flex justify-between text-slate-400 text-xs font-bold uppercase tracking-widest italic">
-                  <span>Taxe & Service</span>
-                  <span className="text-emerald-400">Inclus</span>
+                  <span>Frais de service</span>
+                  <span className="text-emerald-400 font-black">OFFERT</span>
                 </div>
                 <div className="border-t border-white/10 pt-4 flex justify-between items-end">
                   <span className="font-bold text-[10px] uppercase tracking-[0.3em] text-slate-500">Net à payer</span>
-                  <span className="text-4xl font-black text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">
+                  <span className="text-4xl font-black text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]">
                     {total} €
                   </span>
                 </div>
@@ -180,15 +152,15 @@ const CartPage = () => {
                   <Loader2 className="animate-spin w-6 h-6" />
                 ) : (
                   <>
-                    <CreditCard size={20} /> Payer maintenant
+                    <CreditCard size={20} /> Checkout
                   </>
                 )}
               </button>
               
               <div className="mt-8 pt-6 border-t border-white/5">
                 <p className="text-[9px] text-center text-slate-500 uppercase tracking-widest font-black leading-relaxed">
-                  Paiement sécurisé par Stripe<br/>
-                  Billets digitaux envoyés par Email
+                  Paiement 100% sécurisé via Stripe<br/>
+                  Accès instantané après confirmation
                 </p>
               </div>
             </div>

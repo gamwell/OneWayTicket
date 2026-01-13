@@ -10,6 +10,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Correction : Ajout du type React.FormEvent pour TypeScript
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -18,7 +19,6 @@ const Register = () => {
     
     try {
       // Inscription avec Supabase
-      // Le trigger SQL que nous avons configuré s'occupera d'insérer dans user_profiles
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -26,7 +26,7 @@ const Register = () => {
           data: { 
             full_name: fullName 
           },
-          // Redirection après confirmation mail (si activée)
+          // Redirection après confirmation mail
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -34,10 +34,10 @@ const Register = () => {
       if (error) throw error;
 
       alert("Inscription réussie ! Vérifiez vos emails pour confirmer votre compte.");
-      navigate("/auth/login"); // Correction du chemin vers login
+      navigate("/auth/login");
 
     } catch (error: any) {
-      alert("Erreur lors de l'inscription : " + error.message);
+      alert("Erreur lors de l'inscription : " + (error.message || "Une erreur est survenue"));
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,6 @@ const Register = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { 
-          // Utilisation de window.location.origin pour éviter les erreurs localhost:5173 fixes
           redirectTo: `${window.location.origin}/auth/callback` 
         }
       });

@@ -1,11 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-// ✅ CORRECTION ICI : On remonte d'un dossier (..) pour aller dans (lib)
-import { supabase } from '../lib/supabaseClient';
-
-// --- CONFIGURATION DU CACHE ---
-const profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
-const CACHE_DURATION = 30000; // 30 secondes
+// ✅ Import centralisé pour éviter les anciennes clés en dur
+import { supabase } from '../lib/supabaseClient'; 
 
 // --- TYPES ---
 export type UserProfile = {
@@ -29,9 +25,13 @@ interface AuthContextType extends AuthState {
   refreshProfile: () => Promise<void>;
 }
 
+// --- CONFIGURATION DU CACHE ---
+const profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
+const CACHE_DURATION = 30000; // 30 secondes
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     user: null,
     profile: null,
@@ -39,8 +39,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error: null,
   });
 
-  // --- LOGIQUE DE RÉCUPÉRATION DU PROFIL ---
-  const fetchProfile = useCallback(async (userId: string, force = false) => {
+  // --- RÉCUPÉRATION DU PROFIL ---
+  const fetchProfile = useCallback(async (userId: string, force = false): Promise<UserProfile | null> => {
+    if (!userId) return null;
+
     if (!force) {
       const cached = profileCache.get(userId);
       if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
@@ -55,58 +57,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.warn("[Auth] Problème profil:", error.message);
+      }
       
-      profileCache.set(userId, { data, timestamp: Date.now() });
-      return data as UserProfile;
+      const profileData = data as UserProfile;
+      profileCache.set(userId, { data: profileData, timestamp: Date.now() });
+      return profileData;
     } catch (err: any) {
-      console.error('[Auth] Erreur lors de la récupération du profil:', err.message);
+      console.error('[Auth] Erreur critique profil:', err.message);
       return null;
     }
   }, []);
 
-  // --- GESTION DE L'ÉTAT D'AUTHENTIFICATION ---
+  // --- MISE À JOUR DE L'ÉTAT ---
+  const updateAuthState = useCallback(async (session: Session | null) => {
+    const user = session?.user ?? null;
+    let profile: UserProfile | null = null;
+
+    if (user) {
+      profile = await fetchProfile(user.id);
+    }
+
+    setState({
+      user,
+      profile,
+      loading: false,
+      error: null,
+    });
+  }, [fetchProfile]);
+
+  // --- GESTION DE LA SESSION ---
   useEffect(() => {
     let isMounted = true;
 
-    const updateAuthState = async (session: Session | null) => {
-      const user = session?.user ?? null;
-      let profile = null;
-
-      if (user) {
-        profile = await fetchProfile(user.id);
-      }
-
-      if (isMounted) {
-        setState({
-          user,
-          profile,
-          loading: false,
-          error: null,
-        });
-      }
-    };
-
-    // Initialisation : Récupérer la session active au lancement
+    // 1. Vérification session initiale
     supabase.auth.getSession().then(({ data: { session } }) => {
-      updateAuthState(session);
+      if (isMounted) updateAuthState(session);
     }).catch(err => {
-      console.error("[Auth] Erreur session initiale:", err);
-      if (isMounted) setState(prev => ({ ...prev, loading: false }));
+      if (isMounted) setState(prev => ({ ...prev, loading: false, error: err.message }));
     });
 
-    // Écouteur en temps réel pour les changements (Login, Logout, Token refresh)
+    // 2. Écouteur en temps réel
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[Auth] Événement Supabase : ${event}`);
-      
       if (event === 'SIGNED_OUT') {
         profileCache.clear();
-        if (isMounted) {
-          setState({ user: null, profile: null, loading: false, error: null });
-        }
-      } else {
-        // Pour SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED
-        updateAuthState(session);
+        if (isMounted) setState({ user: null, profile: null, loading: false, error: null });
+      } else if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event)) {
+        if (isMounted) updateAuthState(session);
       }
     });
 
@@ -114,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [updateAuthState]);
 
   // --- ACTIONS ---
   const logout = async () => {
@@ -123,27 +121,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.clear();
       sessionStorage.clear();
       profileCache.clear();
-      // Redirection complète pour réinitialiser l'application proprement
-      window.location.href = '/auth/login';
+      // Redirection propre
+      window.location.assign('/auth/login');
     } catch (err) {
-      console.error("[Auth] Erreur lors de la déconnexion:", err);
+      console.error("[Auth] Erreur logout:", err);
     }
   };
 
   const loginWithGoogle = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { 
-        redirectTo: `${window.location.origin}/`,
-        queryParams: { prompt: 'select_account' } // Force le choix du compte
+        redirectTo: `${origin}/`,
+        queryParams: { access_type: 'offline', prompt: 'consent' }
       },
     });
   };
 
   const refreshProfile = async () => {
     if (state.user) {
-      const data = await fetchProfile(state.user.id, true);
-      setState(prev => ({ ...prev, profile: data }));
+      const profile = await fetchProfile(state.user.id, true);
+      setState(prev => ({ ...prev, profile }));
     }
   };
 
@@ -154,11 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// --- HOOK ---
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth doit être utilisé à l’intérieur d’un AuthProvider');
-  }
+  if (!context) throw new Error('useAuth doit être utilisé dans un AuthProvider');
   return context;
 };

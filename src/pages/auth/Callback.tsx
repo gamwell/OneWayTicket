@@ -1,37 +1,37 @@
-// src/pages/auth/Callback.tsx
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+import { Loader2 } from 'lucide-react';
 
-export default function AuthCallback() {
+const AuthCallback = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleCallback = async () => {
-      // Supabase finalise automatiquement la session OAuth ici
-      const { data, error } = await supabase.auth.getSession();
-
+    const handleAuthCallback = async () => {
+      // Supabase gère automatiquement l'échange du code/jeton dans l'URL
+      const { error } = await supabase.auth.getSession();
+      
       if (error) {
-        console.error("Erreur callback OAuth :", error);
-        navigate("/auth/login");
-        return;
-      }
-
-      // Si la session existe → redirection vers le dashboard
-      if (data.session) {
-        navigate("/dashboard");
+        console.error("Erreur de session:", error.message);
+        navigate('/auth/login');
       } else {
-        // Si aucune session → retour à la connexion
-        navigate("/auth/login");
+        // Une fois la session validée, on envoie au dashboard
+        navigate('/dashboard');
       }
     };
 
-    handleCallback();
+    handleAuthCallback();
   }, [navigate]);
 
   return (
-    <div className="flex items-center justify-center h-screen text-white">
-      <p>Connexion en cours...</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0f172a] text-white">
+      <Loader2 className="animate-spin text-cyan-400 mb-4" size={48} />
+      <h2 className="text-xl font-bold tracking-widest uppercase">
+        Finalisation de la connexion...
+      </h2>
+      <p className="text-slate-400 mt-2">Veuillez patienter un instant.</p>
     </div>
   );
-}
+};
+
+export default AuthCallback;

@@ -1,68 +1,67 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
-/* 0. IMPORT POLICE MODERNE
-   ============================================================ */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 /* ============================================================
-   1. VARIABLES & THÈME (DESIGN SYSTEM)
+   0. CONFIGURATION TAILWIND v4
+   ============================================================ */
+@import "tailwindcss";
+
+@theme {
+  /* Configuration de la police Montserrat */
+  --font-montserrat: "Montserrat", sans-serif;
+
+  /* Définition des variables de thème (Design System) */
+  /* Note : En v4, on définit les couleurs directement dans @theme */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(0 0% 14.5%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(0 0% 14.5%);
+  --color-primary: hsl(0 0% 20.5%);
+  --color-primary-foreground: hsl(0 0% 98.5%);
+  --color-secondary: hsl(0 0% 97%);
+  --color-secondary-foreground: hsl(0 0% 20.5%);
+  --color-muted: hsl(0 0% 97%);
+  --color-muted-foreground: hsl(0 0% 55.6%);
+  --color-accent: hsl(0 0% 97%);
+  --color-accent-foreground: hsl(0 0% 20.5%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-border: hsl(0 0% 92.2%);
+  --color-input: hsl(0 0% 92.2%);
+  --color-ring: hsl(0 0% 70.8%);
+  
+  --radius-custom: 0.625rem;
+}
+
+/* ============================================================
+   1. VARIABLES DARK MODE
    ============================================================ */
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 14.5%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 14.5%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 14.5%;
-    --primary: 0 0% 20.5%;
-    --primary-foreground: 0 0% 98.5%;
-    --secondary: 0 0% 97%;
-    --secondary-foreground: 0 0% 20.5%;
-    --muted: 0 0% 97%;
-    --muted-foreground: 0 0% 55.6%;
-    --accent: 0 0% 97%;
-    --accent-foreground: 0 0% 20.5%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 92.2%;
-    --input: 0 0% 92.2%;
-    --ring: 0 0% 70.8%;
-    --radius: 0.625rem;
-  }
-
   .dark {
-    --background: 0 0% 14.5%;
-    --foreground: 0 0% 98.5%;
-    --card: 0 0% 14.5%;
-    --card-foreground: 0 0% 98.5%;
-    --popover: 0 0% 14.5%;
-    --popover-foreground: 0 0% 98.5%;
-    --primary: 0 0% 98.5%;
-    --primary-foreground: 0 0% 20.5%;
-    --secondary: 0 0% 26.9%;
-    --secondary-foreground: 0 0% 98.5%;
-    --muted: 0 0% 26.9%;
-    --muted-foreground: 0 0% 70.8%;
-    --accent: 0 0% 26.9%;
-    --accent-foreground: 0 0% 98.5%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 26.9%;
-    --input: 0 0% 26.9%;
-    --ring: 0 0% 43.9%;
+    --color-background: hsl(0 0% 14.5%);
+    --color-foreground: hsl(0 0% 98.5%);
+    --color-card: hsl(0 0% 14.5%);
+    --color-card-foreground: hsl(0 0% 98.5%);
+    --color-primary: hsl(0 0% 98.5%);
+    --color-primary-foreground: hsl(0 0% 20.5%);
+    --color-secondary: hsl(0 0% 26.9%);
+    --color-secondary-foreground: hsl(0 0% 98.5%);
+    --color-muted: hsl(0 0% 26.9%);
+    --color-muted-foreground: hsl(0 0% 70.8%);
+    --color-accent: hsl(0 0% 26.9%);
+    --color-accent-foreground: hsl(0 0% 98.5%);
+    --color-destructive: hsl(0 62.8% 30.6%);
+    --color-border: hsl(0 0% 26.9%);
+    --color-input: hsl(0 0% 26.9%);
+    --color-ring: hsl(0 0% 43.9%);
   }
 }
 
 /* ============================================================
-   2. RESET & CORRECTION DÉBORDEMENT
+   2. RESET & BASE STYLES
    ============================================================ */
 @layer base {
-  *,
-  *::before,
-  *::after {
-    @apply border-border;
+  *, ::before, ::after {
+    border-color: var(--color-border);
     box-sizing: border-box;
   }
 
@@ -76,18 +75,19 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
     height: 100%;
-    position: relative;
     margin: 0;
     padding: 0;
-    font-family: 'Montserrat', sans-serif; /* 🟦 Police moderne globale */
+    font-family: var(--font-montserrat);
   }
 }
 
+/* Layout Root */
 #root {
   overflow-x: hidden;
   width: 100%;
@@ -97,15 +97,13 @@
   flex-direction: column;
 }
 
-main,
-.main-content,
-[data-main-container] {
+main, .main-content, [data-main-container] {
   overflow-x: hidden;
   max-width: 100vw;
 }
 
 /* ============================================================
-   3. ACCESSIBILITÉ MALVOYANTS
+   3. ACCESSIBILITÉ & CLASSES SPÉCIFIQUES
    ============================================================ */
 header nav a, 
 header nav button,
@@ -115,9 +113,7 @@ header nav button,
   letter-spacing: 0.01em;
 }
 
-.category-title, 
-h2, 
-.category-label {
+.category-title, h2, .category-label {
   font-size: 1.75rem !important;
   font-weight: 900 !important;
   text-transform: uppercase;
@@ -125,30 +121,22 @@ h2,
   margin-bottom: 1rem;
 }
 
-footer a, 
-footer p, 
-footer span,
-footer li {
+footer a, footer p, footer span, footer li {
   font-size: 1.15rem !important;
   font-weight: 500 !important;
   line-height: 1.6 !important;
 }
 
-a:focus, 
-button:focus {
+a:focus, button:focus {
   outline: 3px solid #06b6d4 !important;
   outline-offset: 2px;
 }
 
-/* ============================================================
-   4. TITRE HÉRO ÉVÉNEMENTS (EXPLORER L'AVENTURE)
-   ============================================================ */
 .events-hero-title {
-  font-size: clamp(2.2rem, 4vw, 3rem); /* 🟦 Plus moderne, plus lisible */
+  font-size: clamp(2.2rem, 4vw, 3rem);
   line-height: 1.1;
-  letter-spacing: 0.03em; /* 🟦 Moins espacé = plus propre */
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   font-weight: 900;
-  font-style: normal; /* 🟦 Suppression de l’italic */
-  font-family: 'Montserrat', sans-serif; /* 🟦 Police moderne */
+  font-family: var(--font-montserrat);
 }

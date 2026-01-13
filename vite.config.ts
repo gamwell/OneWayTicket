@@ -7,15 +7,23 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 export default defineConfig({
-  base: '/', // <--- C'EST CETTE LIGNE QUI CORRIGE LES ERREURS 404
+  base: '/',
   plugins: [react()],
+  
+  // --- CONFIGURATION DU SERVEUR (Solution à ERR_CONNECTION_REFUSED) ---
+  server: {
+    port: 5173,      // Force le port 5173
+    strictPort: true, // Si le port 5173 est pris, Vite s'arrête au lieu de passer à 5174
+    host: true       // Permet l'accès via l'IP locale si besoin
+  },
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
   build: {
-    outDir: 'dist', // On force le dossier de sortie à "dist" par sécurité
+    outDir: 'dist',
     minify: "terser",
     terserOptions: {
       compress: {
@@ -23,21 +31,19 @@ export default defineConfig({
         drop_debugger: true,
       },
     },
-    // --- OPTIMISATION DU BUNDLING ---
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Sépare les grosses librairies dans des fichiers distincts
           if (id.includes('node_modules')) {
             if (id.includes('@supabase')) return 'vendor-supabase';
             if (id.includes('lucide-react')) return 'vendor-icons';
             if (id.includes('jspdf') || id.includes('html2canvas')) return 'vendor-pdf';
             if (id.includes('stripe')) return 'vendor-stripe';
-            return 'vendor'; // Reste des librairies
+            return 'vendor';
           }
         },
       },
     },
-    chunkSizeWarningLimit: 600, // Augmente la limite d'alerte à 600kb
+    chunkSizeWarningLimit: 600,
   },
 })

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom"; // AJOUTÉ
 import { supabase } from "../lib/supabase"; 
 import { 
   TrendingUp, 
@@ -8,7 +9,9 @@ import {
   Loader2, 
   ArrowUpRight,
   RefreshCcw,
-  LayoutDashboard
+  LayoutDashboard,
+  PartyPopper, // AJOUTÉ
+  X // AJOUTÉ
 } from "lucide-react";
 
 // --- TYPES SÉCURISÉS ---
@@ -36,6 +39,23 @@ const AdminDashboardPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // --- GESTION DU MESSAGE D'ACCUEIL ---
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    // Vérifie si l'URL contient ?confirmed=true
+    if (searchParams.get('confirmed') === 'true') {
+      setShowWelcome(true);
+      // Nettoyage de l'URL après 5 secondes pour une expérience propre
+      const timer = setTimeout(() => {
+        setShowWelcome(false);
+        setSearchParams({});
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchAdminStats = useCallback(async () => {
     try {
@@ -96,12 +116,38 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    /* CORRECTION : Ajout de 'flex flex-col items-center' pour centrer tout le contenu horizontalement */
     <div className="min-h-screen w-full bg-[#0f172a] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1e1b4b] flex flex-col items-center text-white selection:bg-cyan-500 selection:text-black">
       
-      {/* Conteneur avec padding et largeur max, centré par mx-auto et le flex parent */}
       <div className="w-full max-w-7xl mx-auto p-6 lg:p-10">
         
+        {/* --- BANNIÈRE DE BIENVENUE (MESSAGE D'ACCUEIL) --- */}
+        {showWelcome && (
+          <div className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="relative overflow-hidden bg-cyan-500/10 border border-cyan-500/20 p-6 rounded-[2rem] backdrop-blur-xl flex items-center justify-between group shadow-[0_20px_50px_rgba(6,182,212,0.15)]">
+              <div className="absolute top-0 left-0 w-2 h-full bg-cyan-500"></div>
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="bg-cyan-500 p-3 rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                  <PartyPopper className="text-white" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black italic tracking-tighter uppercase leading-tight">
+                    Accès Admin <span className="text-cyan-400">Activé</span>
+                  </h3>
+                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">
+                    Vérification terminée — Session sécurisée établie
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowWelcome(false)}
+                className="relative z-10 p-2 hover:bg-white/5 rounded-full transition-colors text-slate-500 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header Ultra-Moderne */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-16">
           <div className="flex items-center gap-6">
