@@ -1,6 +1,10 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+
+// --- CONFIGURATION ---
+// On importe le client pour vérifier s'il est chargé
+import { supabase } from "./lib/supabase"; 
 
 // --- COMPOSANTS DE STRUCTURE ---
 import Navbar from "./components/Navbar";
@@ -17,8 +21,6 @@ const SuccessPage   = lazy(() => import("./pages/SuccessPage"));
 const LoginPage     = lazy(() => import("./pages/auth/LoginPage")); 
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const Register      = lazy(() => import("./pages/auth/Register")); 
-
-// CORRECTION ICI : Le fichier s'appelle Callback.tsx, on l'importe donc sous ce nom
 const AuthCallback  = lazy(() => import("./pages/auth/Callback")); 
 
 const PageLoader = () => (
@@ -36,6 +38,14 @@ const PageLoader = () => (
 );
 
 export default function App() {
+  // AJOUT : Diagnostic au démarrage
+  useEffect(() => {
+    console.log("🚀 App démarrée, vérification Supabase...");
+    if (!supabase) {
+      console.error("❌ Le client Supabase n'est pas initialisé. Vérifiez src/lib/supabase.ts");
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans">
       <AutoLogout />
@@ -63,7 +73,6 @@ export default function App() {
               </PublicRoute>
             } />
 
-            {/* ROUTE CALLBACK : L'URL reste /auth/callback pour Supabase */}
             <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* --- ROUTES PROTÉGÉES --- */}

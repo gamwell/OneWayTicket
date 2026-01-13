@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-// ✅ Import centralisé pour éviter les anciennes clés en dur
-import { supabase } from '../lib/supabaseClient'; 
+
+// ✅ CORRECTION : On utilise le fichier centralisé 'supabase' et non 'supabaseClient'
+import { supabase } from '../lib/supabase'; 
 
 // --- TYPES ---
 export type UserProfile = {
@@ -51,6 +52,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     try {
+      // ✅ Vérification si supabase est bien initialisé
+      if (!supabase) throw new Error("Supabase client non disponible");
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -91,6 +95,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let isMounted = true;
 
+    if (!supabase) {
+      setState(prev => ({ ...prev, loading: false, error: "Client Supabase manquant" }));
+      return;
+    }
+
     // 1. Vérification session initiale
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (isMounted) updateAuthState(session);
@@ -117,11 +126,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // --- ACTIONS ---
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      if (supabase) await supabase.auth.signOut();
       localStorage.clear();
       sessionStorage.clear();
       profileCache.clear();
-      // Redirection propre
       window.location.assign('/auth/login');
     } catch (err) {
       console.error("[Auth] Erreur logout:", err);
@@ -129,11 +137,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const loginWithGoogle = async () => {
+    if (!supabase) return;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { 
-        redirectTo: `${origin}/`,
+        redirectTo: `${origin}/auth/callback`, // ✅ Correction : pointe vers callback
         queryParams: { access_type: 'offline', prompt: 'consent' }
       },
     });
