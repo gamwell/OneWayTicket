@@ -2,12 +2,14 @@
 
 import type React from "react"
 import { useEffect, useState, useCallback } from "react"
-// ✅ CORRECTION ICI : On pointe vers le bon client
-import { supabase } from "../lib/supabaseClient"
+
+// ✅ CORRECTION : Importation du client unique et centralisé
+import { supabase } from "../lib/supabase"
+
 import { Loader2, Music, Trophy, Theater, Plane, Cpu, SearchX, RefreshCcw, Star, LayoutGrid } from "lucide-react"
 import { EventCard } from "@/components/events/EventCard"
 
-// ✅ IMPORT DE LA LOGIQUE D'IMAGES
+// ✅ LOGIQUE D'IMAGES
 import { getEventImage } from "../utils/galleryEvents"
 
 // --- MAPPING DES ICÔNES ---
@@ -35,21 +37,27 @@ const EventsPage = () => {
 
   // --- B. CHARGEMENT DES DONNÉES ---
   const fetchData = useCallback(async () => {
+    // Sécurité : Ne pas lancer la requête si supabase n'est pas prêt
+    if (!supabase) return;
+
     setLoading(true)
     try {
-      const { data: catsData, error: catsError } = await supabase.from("event_categories").select("*").order("id")
+      // Chargement des catégories
+      const { data: catsData, error: catsError } = await supabase
+        .from("event_categories")
+        .select("*")
+        .order("id")
 
       if (catsError) throw catsError
       setCategories(catsData || [])
 
+      // Chargement des événements avec leur catégorie
       const { data: eventsData, error: eventsError } = await supabase
         .from("events")
-        .select(
-          `
+        .select(`
           *,
           event_categories:event_categories!fk_event_category ( id, name, color )
-        `,
-        )
+        `)
         .order("date", { ascending: true })
 
       if (eventsError) throw eventsError
@@ -83,9 +91,9 @@ const EventsPage = () => {
   return (
     <div className="min-h-screen w-full max-w-full flex flex-col items-center overflow-x-hidden">
       {/* --- HEADER --- */}
-      <div className="w-full max-w-full bg-gradient-to-b from-slate-900 via-[#070b14] to-[#070b14] pt-16 pb-8 flex flex-col items-center shadow-2xl relative z-10 overflow-visible">
+      <div className="w-full max-w-full bg-gradient-to-b from-slate-900 via-[#070b14] to-[#070b14] pt-16 pb-8 flex flex-col items-center shadow-2xl relative z-10">
    
-        <header className="w-full px-6 md:px-12 mb-8 text-center overflow-visible">
+        <header className="w-full px-6 md:px-12 mb-8 text-center">
            <h1 className="font-montserrat text-3xl md:text-5xl font-black uppercase tracking-tight">
                EXPLORER <br />
              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600">
@@ -94,9 +102,8 @@ const EventsPage = () => {
            </h1>
         </header>
 
-        {/* NAVIGATION */}
-        <nav className="flex flex-wrap justify-center gap-4 px-4 max-w-7xl mx-auto w-full max-w-full overflow-hidden">
-          {/* Bouton TOUT */}
+        {/* NAVIGATION FILTRES */}
+        <nav className="flex flex-wrap justify-center gap-4 px-4 max-w-7xl mx-auto w-full">
           <button
             onClick={() => handleFilter("TOUT")}
             className={`px-8 py-4 rounded-full font-black uppercase text-lg flex items-center gap-3 transition-all border active:scale-95 ${
@@ -108,7 +115,6 @@ const EventsPage = () => {
             <RefreshCcw size={22} /> TOUS
           </button>
 
-          {/* Boutons dynamiques */}
           {categories.map((cat) => {
             const Icon = ICON_MAP[cat.name] || <LayoutGrid size={22} />
             const isActive = activeFilter === cat.id
@@ -139,22 +145,18 @@ const EventsPage = () => {
         </nav>
       </div>
 
-      {/* --- CONTENU --- */}
-      <div className="w-full max-w-full bg-[#070b14] flex flex-col items-center pt-10 pb-20 px-6 min-h-[50vh] overflow-hidden">
+      {/* --- GRILLE DE RÉSULTATS --- */}
+      <div className="w-full max-w-full bg-[#070b14] flex flex-col items-center pt-10 pb-20 px-6 min-h-[50vh]">
         {loading ? (
           <div className="flex flex-col items-center mt-20 gap-8">
             <Loader2 className="animate-spin text-cyan-500" size={80} />
-            <p className="text-3xl font-black uppercase italic animate-pulse text-slate-500">Chargement...</p>
+            <p className="text-3xl font-black uppercase italic animate-pulse text-slate-500">Chargement des billets...</p>
           </div>
         ) : displayedEvents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 w-full max-w-[90rem]">
             {displayedEvents.map((event) => {
-              
-              // ✅ GESTION DES IMAGES
-              // 1. On récupère l'image de la BDD
+              // GESTION DES IMAGES DE SECOURS
               let finalImage = event.image_url;
-
-              // 2. Si l'image est vide ou le lien cassé, on utilise la fonction importée
               if (!finalImage || !finalImage.startsWith("http")) {
                  finalImage = getEventImage(event.event_categories?.name || "default");
               }
@@ -165,12 +167,12 @@ const EventsPage = () => {
         ) : (
           <div className="mt-20 text-center flex flex-col items-center gap-8">
             <SearchX size={100} className="text-slate-800" />
-            <p className="text-2xl font-bold text-slate-500 uppercase">Aucun événement trouvé</p>
+            <p className="text-2xl font-bold text-slate-500 uppercase">Aucun événement dans cette catégorie</p>
             <button
               onClick={() => handleFilter("TOUT")}
               className="px-8 py-4 bg-cyan-900/30 text-cyan-400 rounded-xl border border-cyan-900 hover:bg-cyan-500 hover:text-white transition-colors uppercase font-bold"
             >
-              Voir tout
+              Réinitialiser les filtres
             </button>
           </div>
         )}

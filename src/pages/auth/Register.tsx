@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+// ✅ Import centralisé vers le bon fichier
 import { supabase } from '../../lib/supabase';
 import { UserPlus, Mail, Lock, User, Chrome, Loader2 } from 'lucide-react';
 
@@ -10,7 +11,6 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Correction : Ajout du type React.FormEvent pour TypeScript
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -18,6 +18,9 @@ const Register = () => {
     setLoading(true);
     
     try {
+      // Sécurité : Vérifier si le client Supabase est bien initialisé
+      if (!supabase) throw new Error("Le service d'authentification n'est pas configuré.");
+
       // Inscription avec Supabase
       const { error } = await supabase.auth.signUp({
         email,
@@ -26,7 +29,7 @@ const Register = () => {
           data: { 
             full_name: fullName 
           },
-          // Redirection après confirmation mail
+          // Redirection après confirmation mail (s'adapte à Vercel ou Localhost)
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -45,6 +48,8 @@ const Register = () => {
 
   const loginWithGoogle = async () => {
     try {
+      if (!supabase) return;
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { 
@@ -60,7 +65,7 @@ const Register = () => {
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-6 relative overflow-hidden">
       
-      {/* AURA VIOLETTE */}
+      {/* AURA VIOLETTE EN ARRIÈRE-PLAN */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
 
       {/* CARTE GLASSMORPHISM */}
@@ -111,6 +116,7 @@ const Register = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={6}
             />
           </div>
 

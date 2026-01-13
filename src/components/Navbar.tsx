@@ -7,12 +7,12 @@ import {
   User,
   LogOut,
   ChevronRight,
-  ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-// ✅ CORRECTION ICI : On pointe vers le bon fichier client
-import { supabase } from "../lib/supabaseClient"; 
+
+// ✅ CORRECTION FINALE : On pointe vers le bon fichier 'supabase'
+import { supabase } from "../lib/supabase"; 
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,7 +23,7 @@ const Navbar = () => {
   const { user, profile, logout } = useAuth();
   const { cart } = useCart();
 
-  // 1. Vérification Admin (Sécurisée)
+  // 1. Vérification Admin
   const isAdmin = useMemo(() => {
     return (
       profile?.role === "admin" ||
@@ -32,10 +32,9 @@ const Navbar = () => {
     );
   }, [profile]);
 
-  // 2. Récupération optimisée (Ne s'exécute que si Authentifié)
+  // 2. Récupération des vérifications en attente
   const fetchPendingVerifications = useCallback(async () => {
-    // CONDITION CRUCIALE : On ne demande rien à Supabase si on n'est pas Admin
-    if (!user || !isAdmin) return; 
+    if (!user || !isAdmin || !supabase) return; 
 
     try {
       const { count, error } = await supabase
@@ -45,23 +44,18 @@ const Navbar = () => {
 
       if (!error && count !== null) setPendingCount(count);
     } catch (err) {
-      // On reste silencieux sur l'erreur 401 si elle arrive encore pendant la déconnexion
-      console.log("[Navbar] Vérification ignorée (non autorisé)");
+      console.log("[Navbar] Erreur silencieuse lors de la récupération des notifs");
     }
   }, [isAdmin, user]);
 
-  // 3. Gestion du temps réel
+  // 3. Temps réel pour les notifications Admin
   useEffect(() => {
-    // Si pas d'utilisateur ou pas admin, on nettoie et on sort
-    if (!user || !isAdmin) {
+    if (!user || !isAdmin || !supabase) {
       setPendingCount(0);
       return;
     }
 
-    // Petit délai pour laisser la session se stabiliser
-    const timeout = setTimeout(() => {
-      fetchPendingVerifications();
-    }, 1000);
+    fetchPendingVerifications();
 
     const channel = supabase
       .channel("navbar-admin-notifs")
@@ -73,8 +67,7 @@ const Navbar = () => {
       .subscribe();
 
     return () => {
-      clearTimeout(timeout);
-      supabase.removeChannel(channel);
+      if (supabase) supabase.removeChannel(channel);
     };
   }, [isAdmin, user, fetchPendingVerifications]);
 

@@ -3,38 +3,59 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, LogOut, AlertCircle, ShieldCheck } from 'lucide-react';
 
+// ✅ IMPORTATION CORRIGÉE : On utilise le client unique
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
 // Configuration (30 minutes)
 const LOGOUT_TIME = 30 * 60 * 1000;
-const WARNING_TIME = 29 * 60 * 1000;
+const WARNING_TIME = 25 * 60 * 1000; // Alerte à 25 min pour laisser 5 min de réaction
 const ACTIVITY_THROTTLE = 5000; // On ne reset pas plus d'une fois toutes les 5s
 
 export const AutoLogout = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth(); // Récupération de l'état global
   const [showWarning, setShowWarning] = useState(false);
   
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
 
-  // 1. Fonction de déconnexion
-  const handleLogout = useCallback(() => {
-    console.log("[Auth] Session expirée, nettoyage...");
+  // 1. Fonction de déconnexion sécurisée
+  const handleLogout = useCallback(async () => {
+    console.log("[Auth] Session expirée, déconnexion en cours...");
     
-    // Nettoyage global
-    localStorage.clear();
-    sessionStorage.clear();
-    setShowWarning(false);
-    
-    // Redirection et rafraîchissement pour réinitialiser tout l'état de l'app
-    navigate('/auth/login');
-    window.location.reload();
-  }, [navigate]);
+    try {
+      // ✅ Déconnexion propre de Supabase
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+      
+      // ✅ Appel du logout de votre contexte pour nettoyer le profil
+      await logout();
+      
+      setShowWarning(false);
+      
+      // Nettoyage forcé des résidus
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      navigate('/auth/login', { replace: true });
+    } catch (err) {
+      console.error("[Auth] Erreur lors de l'auto-logout:", err);
+      // En cas d'échec serveur, on force au moins le nettoyage local
+      navigate('/auth/login');
+    }
+  }, [navigate, logout]);
 
   // 2. Fonction de réinitialisation des timers
   const resetTimers = useCallback(() => {
+    // Si l'utilisateur n'est pas connecté, inutile de faire tourner les timers
+    if (!user) return;
+
     const now = Date.now();
     
-    // Si la dernière activité est trop récente, on ignore (optimisation CPU)
+    // Optimisation : on ignore les micro-mouvements (économie de CPU)
     if (now - lastActivityRef.current < ACTIVITY_THROTTLE && !showWarning) {
       return;
     }
@@ -45,15 +66,18 @@ export const AutoLogout = () => {
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
 
+    // Relance des délais
     warningTimerRef.current = setTimeout(() => setShowWarning(true), WARNING_TIME);
     logoutTimerRef.current = setTimeout(handleLogout, LOGOUT_TIME);
-  }, [handleLogout, showWarning]);
+  }, [handleLogout, showWarning, user]);
 
-  // 3. Gestion des événements
+  // 3. Gestion des événements utilisateur
   useEffect(() => {
+    // On ne surveille l'activité que si un utilisateur est loggé
+    if (!user) return;
+
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     
-    // Initialisation
     resetTimers();
 
     const handleUserActivity = () => resetTimers();
@@ -69,7 +93,7 @@ export const AutoLogout = () => {
         window.removeEventListener(event, handleUserActivity);
       });
     };
-  }, [resetTimers]);
+  }, [resetTimers, user]);
 
   return (
     <AnimatePresence>
