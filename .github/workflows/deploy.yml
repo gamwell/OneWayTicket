@@ -3,7 +3,7 @@ name: 🚀 Déploiement FTP
 on:
   push:
     branches:
-      - main  # Le déploiement se lance quand vous envoyez du code sur 'main'
+      - main
 
 jobs:
   web-deploy:
@@ -14,16 +14,19 @@ jobs:
       - name: 🚚 Récupérer le code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Build du projet
+      - name: 🛠️ Build du projet (Vite)
         run: |
           npm install
           npm run build
 
       - name: 📂 Envoi via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/
+          # Assurez-vous que ce chemin est le bon sur votre serveur FTP
           server-dir: /home/quarksydigital.com/
+          # Optionnel : supprime les fichiers sur le serveur qui ne sont pas dans dist
+          delete-destination: false

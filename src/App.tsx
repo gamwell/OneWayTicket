@@ -14,22 +14,27 @@ import { PublicRoute } from "./components/PublicRoute";
 import { AutoLogout } from "./components/AutoLogout"; 
 
 // --- PAGES (Lazy Loading) ---
+// Public
 const HomePage           = lazy(() => import("./pages/HomePage"));
 const EventsPage         = lazy(() => import("./pages/EventsPage"));
 const CartPage           = lazy(() => import("./pages/CartPage"));
-const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
+
+// Auth
 const LoginPage          = lazy(() => import("./pages/auth/LoginPage")); 
 const Register           = lazy(() => import("./pages/auth/Register")); 
+const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword")); // ✅ AJOUTÉ
 const AuthCallback       = lazy(() => import("./pages/auth/Callback")); 
 
-// Pages de Redirection et Dashboards
+// Dashboards & Pivot
 const DashboardPivot     = lazy(() => import("./pages/DashboardPivot"));
 const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
 
-// ✅ AJOUT : Page de création d'événement
+// Admin spécifique
 const NewEventPage       = lazy(() => import("./pages/admin/NewEventPage"));
+const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
 
+// Loader de page stylisé
 const PageLoader = () => (
   <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-[9999]">
     <div className="relative w-16 h-16">
@@ -53,7 +58,8 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans selection:bg-cyan-500/30">
+      {/* Gère la déconnexion automatique en cas d'inactivité */}
       <AutoLogout />
       
       <Suspense fallback={<PageLoader />}>
@@ -79,6 +85,13 @@ export default function App() {
               </PublicRoute>
             } />
 
+            {/* ✅ NOUVELLE ROUTE : Mot de passe oublié */}
+            <Route path="/auth/forgot-password" element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            } />
+
             <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* --- ROUTES PROTÉGÉES (COMMUNES) --- */}
@@ -88,41 +101,42 @@ export default function App() {
               </ProtectedRoute>
             } />
 
-            {/* Aiguillage vers Dashboard User ou Admin selon le profil */}
+            {/* Aiguillage intelligent vers Dashboard User ou Admin */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardPivot />
               </ProtectedRoute>
             } />
 
-            {/* Dashboard spécifique pour les Clients */}
+            {/* Vue Client Classique */}
             <Route path="/dashboard/user" element={
               <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
             } />
 
-            {/* --- ESPACE ADMINISTRATEUR (SÉCURISÉ) --- */}
+            {/* --- ESPACE ADMINISTRATEUR (SÉCURITÉ DOUBLE VERROU) --- */}
             <Route path="/admin/dashboard" element={
               <AdminRoute>
                 <AdminDashboardPage />
               </AdminRoute>
             } />
 
-            {/* ✅ NOUVELLE ROUTE : Création d'événement (SÉCURISÉE) */}
             <Route path="/admin/events/new" element={
               <AdminRoute>
                 <NewEventPage />
               </AdminRoute>
             } />
 
-            {/* --- REDIRECTION PAR DÉFAUT --- */}
+            {/* --- REDIRECTION PAR DÉFAUT (404) --- */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
 
         <Footer />
       </Suspense>
+
+      {/* Mesure des performances Vercel */}
       <SpeedInsights />
     </div>
   );

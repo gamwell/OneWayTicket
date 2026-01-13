@@ -1,162 +1,177 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-// ✅ Import centralisé vers le bon fichier
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { UserPlus, Mail, Lock, User, Chrome, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Loader2, Chrome } from 'lucide-react';
 
 const Register = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: ''
+  });
 
+  // --- INSCRIPTION PAR EMAIL ---
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
-
+    if (loading) return; // Empêche le double envoi
     setLoading(true);
-    
-    try {
-      // Sécurité : Vérifier si le client Supabase est bien initialisé
-      if (!supabase) throw new Error("Le service d'authentification n'est pas configuré.");
 
-      // Inscription avec Supabase
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
+    try {
+      if (!supabase) throw new Error("Client Supabase non initialisé");
+
+      // Nettoyage des données (trim) pour éviter les erreurs de frappe
+      const cleanEmail = formData.email.trim();
+      const cleanName = formData.fullName.trim();
+
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: formData.password,
         options: {
-          data: { 
-            full_name: fullName 
+          data: {
+            full_name: cleanName,
+            // On peut ajouter d'autres métadonnées ici si besoin
           },
-          // Redirection après confirmation mail (s'adapte à Vercel ou Localhost)
+          // URL de retour dynamique selon l'environnement (Local vs Production)
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (error) throw error;
 
-      alert("Inscription réussie ! Vérifiez vos emails pour confirmer votre compte.");
-      navigate("/auth/login");
-
+      if (data?.user) {
+        // Notification plus propre (vous pourriez utiliser un Toast ici)
+        alert("Inscription réussie ! Un lien de confirmation a été envoyé à : " + cleanEmail);
+        navigate('/auth/login');
+      }
     } catch (error: any) {
-      alert("Erreur lors de l'inscription : " + (error.message || "Une erreur est survenue"));
+      console.error("Erreur d'inscription:", error.message);
+      alert("Erreur : " + (error.message === "User already registered" ? "Cet email est déjà utilisé." : error.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const loginWithGoogle = async () => {
+  // --- INSCRIPTION / CONNEXION GOOGLE ---
+  const handleGoogleRegister = async () => {
     try {
       if (!supabase) return;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { 
-          redirectTo: `${window.location.origin}/auth/callback` 
-        }
+        options: {
+          // Indispensable pour que l'utilisateur revienne sur votre site après Google
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
       });
+
       if (error) throw error;
     } catch (error: any) {
-      console.error("Erreur Google OAuth:", error.message);
+      console.error("Erreur Google:", error.message);
+      alert("Erreur de connexion Google : " + error.message);
     }
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-6 relative overflow-hidden">
-      
-      {/* AURA VIOLETTE EN ARRIÈRE-PLAN */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-600/20 blur-[100px] rounded-full pointer-events-none"></div>
-
-      {/* CARTE GLASSMORPHISM */}
-      <div className="relative z-10 bg-[#1e293b]/60 backdrop-blur-xl p-10 rounded-[2.5rem] border border-white/10 w-full max-w-md shadow-2xl">
+    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center px-6 pt-20">
+      <div className="max-w-md w-full animate-in fade-in duration-700">
         
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-black text-white tracking-tighter mb-2">
-            CRÉER UN COMPTE
-          </h2>
-          <p className="text-slate-400 font-medium text-sm">Rejoignez l'aventure OneWayTicket</p>
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white">
+            Rejoindre <span className="text-cyan-400">OneWay</span>
+          </h1>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2">
+            Créez votre compte en quelques secondes
+          </p>
         </div>
 
-        <form onSubmit={handleRegister} className="space-y-4">
+        <div className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] backdrop-blur-xl shadow-2xl">
           
-          {/* Champ Nom */}
-          <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="text" 
-              placeholder="Nom complet" 
-              className="w-full bg-[#0f172a]/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Champ Email */}
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="email" 
-              placeholder="Email" 
-              className="w-full bg-[#0f172a]/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          
-          {/* Champ Mot de passe */}
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input 
-              type="password" 
-              placeholder="Mot de passe" 
-              className="w-full bg-[#0f172a]/50 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
-
+          {/* BOUTON GOOGLE */}
           <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-pink-500/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
+            type="button" // Important pour ne pas soumettre le formulaire
+            onClick={handleGoogleRegister}
+            className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-3 text-sm font-black uppercase tracking-widest hover:bg-white/10 hover:border-cyan-400/50 transition-all mb-8 group"
           >
-            {loading ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <>
-                S'inscrire <UserPlus size={20} />
-              </>
-            )}
+            <Chrome size={20} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+            Continuer avec Google
           </button>
-        </form>
 
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/10"></span></div>
-          <div className="relative flex justify-center text-[10px] uppercase tracking-widest">
-            <span className="bg-[#1e293b] px-4 text-slate-500 font-bold rounded-full">Ou</span>
+          <div className="relative mb-8 text-center">
+            <span className="bg-[#121a2e] px-4 text-[10px] font-black uppercase text-slate-500 relative z-10">Ou par email</span>
+            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/5"></div>
           </div>
+
+          <form onSubmit={handleRegister} className="space-y-5">
+            {/* NOM COMPLET */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nom Complet</label>
+              <div className="relative">
+                <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <input 
+                  required
+                  type="text"
+                  placeholder="John Doe"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-2xl pl-14 pr-6 py-4 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-bold text-white placeholder:text-slate-600"
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* EMAIL */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <input 
+                  required
+                  type="email"
+                  placeholder="nom@exemple.com"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-2xl pl-14 pr-6 py-4 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-bold text-white placeholder:text-slate-600"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* MOT DE PASSE */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Mot de passe</label>
+              <div className="relative">
+                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                <input 
+                  required
+                  type="password"
+                  minLength={6} // Sécurité minimale recommandée
+                  placeholder="••••••••"
+                  className="w-full bg-slate-900/50 border border-white/10 rounded-2xl pl-14 pr-6 py-4 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-bold text-white placeholder:text-slate-600"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* BOUTON SUBMIT */}
+            <button 
+              type="submit"
+              disabled={loading}
+              className="w-full py-5 bg-cyan-500 text-[#0f172a] rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <ArrowRight size={20} />}
+              {loading ? "Création en cours..." : "Créer mon compte"}
+            </button>
+          </form>
+
+          <p className="text-center mt-8 text-slate-500 text-xs font-bold uppercase tracking-tighter">
+            Déjà inscrit ? <Link to="/auth/login" className="text-cyan-400 hover:underline hover:text-cyan-300 transition-colors">Se connecter</Link>
+          </p>
         </div>
-
-        <button 
-          onClick={loginWithGoogle}
-          type="button"
-          className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold text-white hover:bg-white hover:text-black transition-all active:scale-[0.98]"
-        >
-          <Chrome size={20} className="text-emerald-400" />
-          Continuer avec Google
-        </button>
-
-        <p className="mt-6 text-center text-slate-400 text-sm">
-          Déjà membre ?{' '}
-          <Link to="/auth/login" className="text-purple-400 font-bold hover:underline">
-            Se connecter
-          </Link>
-        </p>
       </div>
     </div>
   );
