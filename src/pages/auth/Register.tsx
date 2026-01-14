@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Mail, Lock, User, ArrowRight, Loader2, Chrome } from 'lucide-react';
 
-const Register = () => {
+const Register: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -15,39 +15,70 @@ const Register = () => {
   // --- INSCRIPTION PAR EMAIL ---
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // Empêche le double envoi
+    if (loading) return; 
     setLoading(true);
 
     try {
-      if (!supabase) throw new Error("Client Supabase non initialisé");
+      if (!supabase) throw new Error("Le client Supabase n'est pas initialisé.");
 
-      // Nettoyage des données (trim) pour éviter les erreurs de frappe
       const cleanEmail = formData.email.trim();
       const cleanName = formData.fullName.trim();
 
+      /**
+       * ✅ CONFIGURATION DE L'URL DE REDIRECTION
+       */
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      const redirectUrl = `${baseUrl}/auth/callback`;
+
+      // 1. Inscription de l'utilisateur dans Supabase
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: formData.password,
         options: {
           data: {
             full_name: cleanName,
-            // On peut ajouter d'autres métadonnées ici si besoin
           },
-          // URL de retour dynamique selon l'environnement (Local vs Production)
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
         },
       });
 
       if (error) throw error;
 
+      // 2. Appel à la fonction serverless pour envoyer l'email de bienvenue via Resend
       if (data?.user) {
-        // Notification plus propre (vous pourriez utiliser un Toast ici)
+        try {
+          const emailResponse = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: cleanEmail,
+              firstName: cleanName.split(' ')[0] // On récupère seulement le premier mot (prénom)
+            }),
+          });
+
+          if (!emailResponse.ok) {
+            const errorData = await emailResponse.json();
+            console.warn('Email non envoyé (API):', errorData.error);
+          } else {
+            console.log('✅ Email de bienvenue programmé avec succès');
+          }
+        } catch (apiError) {
+          // On log l'erreur mais on ne bloque pas l'utilisateur car son compte est créé
+          console.error('Erreur de connexion à l\'API email:', apiError);
+        }
+
         alert("Inscription réussie ! Un lien de confirmation a été envoyé à : " + cleanEmail);
         navigate('/auth/login');
       }
     } catch (error: any) {
       console.error("Erreur d'inscription:", error.message);
-      alert("Erreur : " + (error.message === "User already registered" ? "Cet email est déjà utilisé." : error.message));
+      let errorMessage = error.message;
+      if (error.message === "User already registered") {
+        errorMessage = "Cet email est déjà utilisé.";
+      }
+      alert("Erreur : " + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -57,12 +88,12 @@ const Register = () => {
   const handleGoogleRegister = async () => {
     try {
       if (!supabase) return;
+      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Indispensable pour que l'utilisateur revienne sur votre site après Google
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${baseUrl}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -86,15 +117,14 @@ const Register = () => {
             Rejoindre <span className="text-cyan-400">OneWay</span>
           </h1>
           <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2">
-            Créez votre compte en quelques secondes
+            Compte officiel pour quarksydigital.com
           </p>
         </div>
 
         <div className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] backdrop-blur-xl shadow-2xl">
           
-          {/* BOUTON GOOGLE */}
           <button 
-            type="button" // Important pour ne pas soumettre le formulaire
+            type="button"
             onClick={handleGoogleRegister}
             className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center gap-3 text-sm font-black uppercase tracking-widest hover:bg-white/10 hover:border-cyan-400/50 transition-all mb-8 group"
           >
@@ -103,12 +133,11 @@ const Register = () => {
           </button>
 
           <div className="relative mb-8 text-center">
-            <span className="bg-[#121a2e] px-4 text-[10px] font-black uppercase text-slate-500 relative z-10">Ou par email</span>
+            <span className="bg-[#0f172a] px-4 text-[10px] font-black uppercase text-slate-500 relative z-10">Ou par email</span>
             <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/5"></div>
           </div>
 
           <form onSubmit={handleRegister} className="space-y-5">
-            {/* NOM COMPLET */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nom Complet</label>
               <div className="relative">
@@ -116,6 +145,7 @@ const Register = () => {
                 <input 
                   required
                   type="text"
+                  autoComplete="name"
                   placeholder="John Doe"
                   className="w-full bg-slate-900/50 border border-white/10 rounded-2xl pl-14 pr-6 py-4 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-bold text-white placeholder:text-slate-600"
                   value={formData.fullName}
@@ -124,14 +154,14 @@ const Register = () => {
               </div>
             </div>
 
-            {/* EMAIL */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Email</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Email Professionnel</label>
               <div className="relative">
                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input 
                   required
                   type="email"
+                  autoComplete="email"
                   placeholder="nom@exemple.com"
                   className="w-full bg-slate-900/50 border border-white/10 rounded-2xl pl-14 pr-6 py-4 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-bold text-white placeholder:text-slate-600"
                   value={formData.email}
@@ -140,7 +170,6 @@ const Register = () => {
               </div>
             </div>
 
-            {/* MOT DE PASSE */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Mot de passe</label>
               <div className="relative">
@@ -148,7 +177,8 @@ const Register = () => {
                 <input 
                   required
                   type="password"
-                  minLength={6} // Sécurité minimale recommandée
+                  autoComplete="new-password"
+                  minLength={6}
                   placeholder="••••••••"
                   className="w-full bg-slate-900/50 border border-white/10 rounded-2xl pl-14 pr-6 py-4 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-bold text-white placeholder:text-slate-600"
                   value={formData.password}
@@ -157,19 +187,18 @@ const Register = () => {
               </div>
             </div>
 
-            {/* BOUTON SUBMIT */}
             <button 
               type="submit"
               disabled={loading}
               className="w-full py-5 bg-cyan-500 text-[#0f172a] rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 active:scale-95 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? <Loader2 className="animate-spin" /> : <ArrowRight size={20} />}
-              {loading ? "Création en cours..." : "Créer mon compte"}
+              {loading ? "Traitement..." : "Créer mon compte"}
             </button>
           </form>
 
           <p className="text-center mt-8 text-slate-500 text-xs font-bold uppercase tracking-tighter">
-            Déjà inscrit ? <Link to="/auth/login" className="text-cyan-400 hover:underline hover:text-cyan-300 transition-colors">Se connecter</Link>
+            Déjà inscrit ? <Link to="/auth/login" className="text-cyan-400 hover:underline hover:text-cyan-300 transition-colors font-medium">Se connecter</Link>
           </p>
         </div>
       </div>

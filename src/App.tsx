@@ -14,16 +14,20 @@ import { PublicRoute } from "./components/PublicRoute";
 import { AutoLogout } from "./components/AutoLogout"; 
 
 // --- PAGES (Lazy Loading) ---
-// Public
+// Note : Assurez-vous que les noms de fichiers sur votre disque correspondent EXACTEMENT (Majuscules incluses)
 const HomePage           = lazy(() => import("./pages/HomePage"));
 const EventsPage         = lazy(() => import("./pages/EventsPage"));
 const CartPage           = lazy(() => import("./pages/CartPage"));
+const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
 
 // Auth
 const LoginPage          = lazy(() => import("./pages/auth/LoginPage")); 
 const Register           = lazy(() => import("./pages/auth/Register")); 
-const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword")); // ✅ AJOUTÉ
 const AuthCallback       = lazy(() => import("./pages/auth/Callback")); 
+
+// ✅ CORRECTION/VÉRIFICATION : Import de ForgotPassword
+// Assurez-vous que le fichier s'appelle exactement ForgotPassword.tsx dans src/pages/auth/
+const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword")); 
 
 // Dashboards & Pivot
 const DashboardPivot     = lazy(() => import("./pages/DashboardPivot"));
@@ -32,7 +36,6 @@ const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage")
 
 // Admin spécifique
 const NewEventPage       = lazy(() => import("./pages/admin/NewEventPage"));
-const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
 
 // Loader de page stylisé
 const PageLoader = () => (
@@ -59,7 +62,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans selection:bg-cyan-500/30">
-      {/* Gère la déconnexion automatique en cas d'inactivité */}
       <AutoLogout />
       
       <Suspense fallback={<PageLoader />}>
@@ -85,7 +87,7 @@ export default function App() {
               </PublicRoute>
             } />
 
-            {/* ✅ NOUVELLE ROUTE : Mot de passe oublié */}
+            {/* ✅ ROUTE : Mot de passe oublié */}
             <Route path="/auth/forgot-password" element={
               <PublicRoute>
                 <ForgotPassword />
@@ -101,21 +103,19 @@ export default function App() {
               </ProtectedRoute>
             } />
 
-            {/* Aiguillage intelligent vers Dashboard User ou Admin */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardPivot />
               </ProtectedRoute>
             } />
 
-            {/* Vue Client Classique */}
             <Route path="/dashboard/user" element={
               <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
             } />
 
-            {/* --- ESPACE ADMINISTRATEUR (SÉCURITÉ DOUBLE VERROU) --- */}
+            {/* --- ESPACE ADMINISTRATEUR --- */}
             <Route path="/admin/dashboard" element={
               <AdminRoute>
                 <AdminDashboardPage />
@@ -128,7 +128,7 @@ export default function App() {
               </AdminRoute>
             } />
 
-            {/* --- REDIRECTION PAR DÉFAUT (404) --- */}
+            {/* --- REDIRECTION PAR DÉFAUT --- */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -136,7 +136,6 @@ export default function App() {
         <Footer />
       </Suspense>
 
-      {/* Mesure des performances Vercel */}
       <SpeedInsights />
     </div>
   );
