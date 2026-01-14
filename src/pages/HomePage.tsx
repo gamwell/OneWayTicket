@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-// ✅ CORRECTION FINALE : On utilise le client unique 'supabase'
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
 import { Ticket, Calendar, Users, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
@@ -11,7 +10,6 @@ const HomePage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Sécurité : Ne pas exécuter si le client n'est pas initialisé
       if (!supabase) {
         setLoading(false);
         return;
@@ -19,7 +17,6 @@ const HomePage = () => {
 
       try {
         setLoading(true);
-        // Exécution des requêtes en parallèle pour gagner en vitesse
         const [eventsRes, ticketsRes, usersRes, featuredRes] = await Promise.all([
           supabase.from('events').select('*', { count: 'exact', head: true }),
           supabase.from('tickets').select('*', { count: 'exact', head: true }),
@@ -40,7 +37,7 @@ const HomePage = () => {
         setLoading(false);
       }
     };
-    
+     
     fetchData();
   }, []);
 
@@ -66,21 +63,26 @@ const HomePage = () => {
       <div className="relative z-10">
         
         {/* --- HERO SECTION --- */}
-        <section className="h-[90vh] flex flex-col items-center justify-center text-center px-6">
+        <section className="min-h-[90vh] flex flex-col items-center justify-center text-center px-4 md:px-6 py-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold tracking-[0.3em] uppercase mb-8">
             <Sparkles size={14} className="text-yellow-400" /> 
             Bienvenue dans l'Exclusivité
           </div>
-          <h1 className="text-7xl md:text-[10rem] font-black tracking-tighter mb-8 select-none leading-none uppercase italic">
+          
+          {/* === MODIFICATION ICI : TAILLE ENCORE RÉDUITE === */}
+          {/* text-2xl (Mobile très sûr) -> sm:text-5xl (Tablette) -> md:text-8xl (PC) */}
+          <h1 className="text-2xl sm:text-5xl md:text-8xl lg:text-9xl font-black tracking-tighter mb-8 select-none leading-none uppercase italic w-full break-words px-2">
             <span className="bg-gradient-to-r from-emerald-400 via-blue-500 via-purple-500 via-pink-500 to-orange-400 bg-clip-text text-transparent">
               ONEWAYTICKET
             </span>
           </h1>
-          <p className="text-xl md:text-3xl text-slate-400 font-medium italic max-w-3xl leading-relaxed">
-            "Chaque billet est un nouveau départ. <br /> Le futur de vos souvenirs commence ici."
+          
+          <p className="text-base md:text-3xl text-slate-400 font-medium italic max-w-3xl leading-relaxed px-4">
+            "Chaque billet est un nouveau départ. <br className="hidden md:block" /> Le futur de vos souvenirs commence ici."
           </p>
-          <div className="mt-16 flex flex-col sm:flex-row gap-6">
-            <Link to="/events" className="px-16 py-6 bg-white text-slate-900 rounded-full font-black text-lg hover:scale-105 transition-all shadow-2xl flex items-center gap-3">
+          
+          <div className="mt-16 flex flex-col sm:flex-row gap-6 w-full sm:w-auto px-6">
+            <Link to="/events" className="w-full sm:w-auto px-16 py-6 bg-white text-slate-900 rounded-full font-black text-lg hover:scale-105 transition-all shadow-2xl flex items-center justify-center gap-3">
               EXPLORER LES EVENTS <ArrowRight size={20} />
             </Link>
           </div>
@@ -98,7 +100,7 @@ const HomePage = () => {
                 <div className={`${s.color} flex justify-center mb-6 opacity-50 group-hover:opacity-100 transition-opacity`}>
                   {React.cloneElement(s.icon as React.ReactElement, { size: 40 })}
                 </div>
-                <div className={`text-7xl font-black mb-4 ${s.color} tracking-tighter`}>{s.val}</div>
+                <div className={`text-6xl md:text-7xl font-black mb-4 ${s.color} tracking-tighter`}>{s.val}</div>
                 <div className="text-slate-500 font-black uppercase tracking-[0.4em] text-[10px]">{s.lab}</div>
               </div>
             ))}
@@ -108,15 +110,15 @@ const HomePage = () => {
         {/* --- FEATURED SECTION --- */}
         <section className="py-32 px-6">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-end justify-between mb-20">
+            <div className="flex flex-col md:flex-row items-end justify-between mb-20 gap-6">
               <div>
-                <h2 className="text-5xl font-black tracking-tighter italic uppercase text-white">Dernières <br /> <span className="text-cyan-400">Pépites</span></h2>
+                <h2 className="text-3xl md:text-5xl font-black tracking-tighter italic uppercase text-white">Dernières <br /> <span className="text-cyan-400">Pépites</span></h2>
               </div>
-              <Link to="/events" className="hidden md:flex items-center gap-2 font-black text-xs uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
+              <Link to="/events" className="flex items-center gap-2 font-black text-xs uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
                 Voir tout le catalogue <ArrowRight size={16} />
               </Link>
             </div>
-            
+             
             {loading ? (
               <div className="flex justify-center py-20">
                 <Loader2 className="animate-spin text-cyan-400" size={40} />
@@ -134,9 +136,9 @@ const HomePage = () => {
                       </div>
                     </div>
                     <div className="px-2">
-                      <h3 className="text-2xl font-black tracking-tighter italic uppercase mb-2 text-white">{e.title}</h3>
+                      <h3 className="text-xl md:text-2xl font-black tracking-tighter italic uppercase mb-2 text-white line-clamp-2">{e.title}</h3>
                       <div className="flex items-center justify-between mt-6">
-                        <span className="text-3xl font-black text-cyan-400">{e.price}€</span>
+                        <span className="text-2xl md:text-3xl font-black text-cyan-400">{e.price}€</span>
                         <Link to={`/events`} className="p-4 bg-white text-black rounded-2xl group-hover:bg-cyan-400 transition-colors">
                           <ArrowRight size={20} />
                         </Link>
