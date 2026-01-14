@@ -1,184 +1,134 @@
-"use client"
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { Link } from 'react-router-dom';
+import { Search, MapPin, Calendar, ArrowRight, Loader2, Filter } from 'lucide-react';
 
-import type React from "react"
-import { useEffect, useState, useCallback } from "react"
-
-// ✅ CORRECTION : Importation du client unique et centralisé
-import { supabase } from "../lib/supabase"
-
-import { Loader2, Music, Trophy, Theater, Plane, Cpu, SearchX, RefreshCcw, Star, LayoutGrid } from "lucide-react"
-import { EventCard } from "@/components/events/EventCard"
-
-// ✅ LOGIQUE D'IMAGES
-import { getEventImage } from "../utils/galleryEvents"
-
-// --- MAPPING DES ICÔNES ---
-const ICON_MAP: Record<string, React.ReactNode> = {
-  Musique: <Music size={28} />,
-  Concert: <Music size={28} />,
-  Sport: <Trophy size={28} />,
-  Théâtre: <Theater size={28} />,
-  Spectacle: <Theater size={28} />,
-  Tech: <Cpu size={28} />,
-  iTech: <Cpu size={28} />,
-  Conférence: <Cpu size={28} />,
-  Voyage: <Plane size={28} />,
-  Festival: <Star size={28} />,
-  Autre: <LayoutGrid size={28} />,
-}
-
-const EventsPage = () => {
-  // --- A. ÉTATS ---
-  const [allEvents, setAllEvents] = useState<any[]>([])
-  const [displayedEvents, setDisplayedEvents] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeFilter, setActiveFilter] = useState("TOUT")
-
-  // --- B. CHARGEMENT DES DONNÉES ---
-  const fetchData = useCallback(async () => {
-    // Sécurité : Ne pas lancer la requête si supabase n'est pas prêt
-    if (!supabase) return;
-
-    setLoading(true)
-    try {
-      // Chargement des catégories
-      const { data: catsData, error: catsError } = await supabase
-        .from("event_categories")
-        .select("*")
-        .order("id")
-
-      if (catsError) throw catsError
-      setCategories(catsData || [])
-
-      // Chargement des événements avec leur catégorie
-      const { data: eventsData, error: eventsError } = await supabase
-        .from("events")
-        .select(`
-          *,
-          event_categories:event_categories!fk_event_category ( id, name, color )
-        `)
-        .order("date", { ascending: true })
-
-      if (eventsError) throw eventsError
-
-      setAllEvents(eventsData || [])
-      setDisplayedEvents(eventsData || [])
-    } catch (error) {
-      console.error("Erreur chargement EventsPage :", error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+const Events = () => {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.from('events').select('*').order('date', { ascending: true });
+        if (error) throw error;
+        setEvents(data || []);
+      } catch (error) { console.error('Error fetching events:', error); } 
+      finally { setLoading(false); }
+    };
+    fetchEvents();
+  }, []);
 
-  // --- C. LOGIQUE DE FILTRE ---
-  const handleFilter = (categoryId: string) => {
-    setActiveFilter(categoryId)
+  const filteredEvents = events.filter(event =>
+    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    event.location.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    if (categoryId === "TOUT") {
-      setDisplayedEvents(allEvents)
-    } else {
-      const filtered = allEvents.filter((e) => e.category_id === categoryId)
-      setDisplayedEvents(filtered)
-    }
-  }
-
-  // --- RENDER ---
   return (
-    <div className="min-h-screen w-full max-w-full flex flex-col items-center overflow-x-hidden">
-      {/* --- HEADER --- */}
-      <div className="w-full max-w-full bg-gradient-to-b from-slate-900 via-[#070b14] to-[#070b14] pt-16 pb-8 flex flex-col items-center shadow-2xl relative z-10">
-   
-        <header className="w-full px-6 md:px-12 mb-8 text-center">
-           <h1 className="font-montserrat text-3xl md:text-5xl font-black uppercase tracking-tight">
-               EXPLORER <br />
-             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600">
-               L'AVENTURE
-             </span>
-           </h1>
-        </header>
-
-        {/* NAVIGATION FILTRES */}
-        <nav className="flex flex-wrap justify-center gap-4 px-4 max-w-7xl mx-auto w-full">
-          <button
-            onClick={() => handleFilter("TOUT")}
-            className={`px-8 py-4 rounded-full font-black uppercase text-lg flex items-center gap-3 transition-all border active:scale-95 ${
-              activeFilter === "TOUT"
-                ? "bg-white text-black border-white shadow-xl scale-105 ring-4 ring-white/20"
-                : "bg-slate-800/50 text-slate-300 border-white/10 hover:bg-slate-700/50 hover:border-white/30 backdrop-blur-md"
-            }`}
-          >
-            <RefreshCcw size={22} /> TOUS
-          </button>
-
-          {categories.map((cat) => {
-            const Icon = ICON_MAP[cat.name] || <LayoutGrid size={22} />
-            const isActive = activeFilter === cat.id
-
-            const buttonStyle = isActive
-              ? {
-                  backgroundColor: cat.color,
-                  borderColor: cat.color,
-                  boxShadow: `0 0 25px ${cat.color}66`,
-                }
-              : {}
-
-            return (
-              <button
-                key={cat.id}
-                onClick={() => handleFilter(cat.id)}
-                className={`px-8 py-4 rounded-full font-black uppercase text-lg flex items-center gap-3 transition-all border active:scale-95 ${
-                  isActive
-                    ? "text-white border-white scale-105 ring-2 ring-offset-2 ring-offset-[#070b14]"
-                    : "bg-slate-800/50 text-slate-300 border-white/10 hover:bg-slate-700/50 hover:border-white/30 backdrop-blur-md"
-                }`}
-                style={buttonStyle}
-              >
-                {Icon} {cat.name}
-              </button>
-            )
-          })}
-        </nav>
+    // FOND FORCÉ : Prune Profond (#1a0525)
+    <div className="min-h-screen text-white relative overflow-hidden" style={{ background: '#1a0525' }}>
+      
+      {/* --- AMBIANCE LUMINEUSE --- */}
+      <div className="fixed inset-0 z-[0] pointer-events-none">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }}></div>
+        {/* Lumière Turquoise (Fraîcheur lointaine) */}
+        <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-teal-500/10 blur-[130px] rounded-full"></div>
+        {/* Lumière Rose (Chaleur proche) */}
+        <div className="absolute bottom-[5%] right-[-5%] w-[55%] h-[55%] bg-rose-500/15 blur-[160px] rounded-full"></div>
       </div>
 
-      {/* --- GRILLE DE RÉSULTATS --- */}
-      <div className="w-full max-w-full bg-[#070b14] flex flex-col items-center pt-10 pb-20 px-6 min-h-[50vh]">
-        {loading ? (
-          <div className="flex flex-col items-center mt-20 gap-8">
-            <Loader2 className="animate-spin text-cyan-500" size={80} />
-            <p className="text-3xl font-black uppercase italic animate-pulse text-slate-500">Chargement des billets...</p>
+      <div className="relative z-10 container mx-auto px-6 py-24">
+        
+        {/* --- EN-TÊTE --- */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold tracking-[0.3em] uppercase mb-6 text-amber-200 shadow-lg">
+            <Calendar size={14} className="text-amber-300" /> 
+            Agenda Officiel
           </div>
-        ) : displayedEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 w-full max-w-[90rem]">
-            {displayedEvents.map((event) => {
-              // GESTION DES IMAGES DE SECOURS
-              let finalImage = event.image_url;
-              if (!finalImage || !finalImage.startsWith("http")) {
-                 finalImage = getEventImage(event.event_categories?.name || "default");
-              }
+          
+          <h1 className="text-4xl md:text-7xl font-black tracking-tighter uppercase italic mb-8">
+            Catalogue <br />
+            {/* CORRECTION ICI : Ajout de 'pr-4' et 'inline-block' pour sauver la lettre F */}
+            <span className="bg-gradient-to-r from-amber-200 via-rose-300 to-teal-200 bg-clip-text text-transparent py-2 pr-4 inline-block">
+              EXCLUSIF
+            </span>
+          </h1>
+          
+          {/* BARRE DE RECHERCHE LUXE */}
+          <div className="max-w-xl mx-auto relative group">
+             {/* Glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-rose-500 via-amber-400 to-teal-400 rounded-full opacity-20 group-hover:opacity-40 blur transition-opacity duration-500"></div>
+            <div className="relative bg-[#2a0a2e]/80 backdrop-blur-xl border border-white/10 rounded-full p-2 flex items-center shadow-2xl">
+              <Search className="ml-4 text-white/40" size={20} />
+              <input 
+                type="text" 
+                placeholder="Artiste, Lieu, Expérience..." 
+                className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-white/30 px-4 font-bold"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <button className="p-3 bg-white text-[#1a0525] rounded-full hover:bg-amber-300 transition-colors">
+                <Filter size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
 
-              return <EventCard key={event.id} event={event} image={finalImage} />
-            })}
+        {/* --- GRILLE ÉVÉNEMENTS --- */}
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-rose-400" size={40} />
           </div>
         ) : (
-          <div className="mt-20 text-center flex flex-col items-center gap-8">
-            <SearchX size={100} className="text-slate-800" />
-            <p className="text-2xl font-bold text-slate-500 uppercase">Aucun événement dans cette catégorie</p>
-            <button
-              onClick={() => handleFilter("TOUT")}
-              className="px-8 py-4 bg-cyan-900/30 text-cyan-400 rounded-xl border border-cyan-900 hover:bg-cyan-500 hover:text-white transition-colors uppercase font-bold"
-            >
-              Réinitialiser les filtres
-            </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredEvents.map((event) => (
+              <div key={event.id} className="group bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 overflow-hidden hover:border-amber-300/30 transition-all duration-300 hover:-translate-y-2 hover:bg-white/10 shadow-2xl">
+                
+                {/* Image */}
+                <div className="h-64 relative overflow-hidden">
+                  <img 
+                    src={event.image_url || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80'} 
+                    alt={event.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-xs font-bold text-amber-300 uppercase tracking-wider">
+                    {new Date(event.date).toLocaleDateString()}
+                  </div>
+                </div>
+
+                {/* Contenu */}
+                <div className="p-8">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-2xl font-black italic uppercase leading-none mb-2 text-white line-clamp-2">{event.title}</h3>
+                      <div className="flex items-center gap-2 text-sm text-rose-100/60 font-medium">
+                        <MapPin size={14} className="text-rose-400" />
+                        {event.location}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
+                    <span className="text-3xl font-black text-amber-300">
+                      {event.price}€
+                    </span>
+                    <Link 
+                      to={`/events/${event.id}`} 
+                      className="px-6 py-3 bg-white text-[#1a0525] rounded-xl font-bold text-sm uppercase tracking-wider hover:bg-rose-400 hover:text-white transition-colors flex items-center gap-2"
+                    >
+                      Réserver <ArrowRight size={16} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default EventsPage
+export default Events;

@@ -49,9 +49,7 @@
     --color-input: hsl(0 0% 26.9%);
     --color-ring: hsl(0 0% 43.9%);
   }
-}
 
-@layer base {
   *, ::before, ::after {
     border-color: var(--color-border);
     box-sizing: border-box;
@@ -76,6 +74,7 @@
     margin: 0;
     padding: 0;
     font-family: var(--font-montserrat);
+    /* Optimisation maximale du rendu de texte */
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
@@ -111,19 +110,6 @@ header nav a, header nav button, .navbar-link {
   align-items: center;
 }
 
-/* Correctif Desktop */
-h1, h2, h3, .events-hero-title, .category-title {
-  padding-right: 0.1em !important;
-  line-height: 1.25 !important;
-  background-clip: text;
-  -webkit-background-clip: text;
-}
-
-.gradient-text-fix {
-  padding-right: 0.2em !important;
-  display: inline-block;
-}
-
 .category-title, h2, .category-label {
   font-size: clamp(1.25rem, 4vw, 1.75rem) !important;
   font-weight: 900 !important;
@@ -145,22 +131,40 @@ a:focus, button:focus, input:focus {
   outline-offset: 2px;
 }
 
-/* Style Desktop Standard */
-.events-hero-title {
-  font-size: clamp(2rem, 5vw, 3rem);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  font-weight: 900;
-  font-family: var(--font-montserrat);
-  overflow-wrap: break-word; 
-  hyphens: auto;
+/* ============================================================
+   4. SOLUTION ANTI-COUPURE & MOBILE (VERSION ULTRA FORCÉE)
+   ============================================================ */
+
+.safe-title-zone {
+  /* 1. On force l'élément à se comporter comme un bloc pour prendre la place */
+  display: inline-block !important;
+
+  /* 2. PADDING MASSIF : 1em = la largeur d'une lettre entière en plus à droite */
+  padding-right: 1em !important; 
+  
+  /* Padding autour */
+  padding-top: 0.2em !important;
+  padding-bottom: 0.2em !important;
+  padding-left: 0.1em !important;
+
+  /* 3. MARGE NÉGATIVE FORTE : On ramène le texte vers la gauche pour compenser le padding */
+  margin-right: -0.5em !important;
+  
+  /* 4. Force l'affichage complet */
+  overflow: visible !important;
+  
+  /* Gestion du dégradé de texte */
+  line-height: 1.4 !important; /* Hauteur de ligne augmentée pour sécurité verticale */
+  background-clip: text;
+  -webkit-background-clip: text;
+  
+  /* Sécurité largeur */
+  width: auto !important;
+  max-width: 100%;
 }
 
-/* ============================================================
-   4. VERSION MOBILE FORCE (La partie importante)
-   ============================================================ */
 @media (max-width: 768px) {
-  /* 1. On force les billets à s'empiler */
+  /* 1. Force les billets en 1 colonne sur mobile */
   .grid {
     grid-template-columns: 1fr !important;
     gap: 20px !important;
@@ -168,20 +172,20 @@ a:focus, button:focus, input:focus {
     padding-right: 15px !important;
   }
   
-  /* 2. TITRE : ON UTILISE "VW" (Viewport Width) */
-  /* Cela force le texte à faire 10% de la largeur de l'écran. 
-     Sur un petit écran, ce sera petit. Sur un grand, ce sera grand. */
-  .events-hero-title, h1 {
-    font-size: 11vw !important; /* <--- C'EST CETTE LIGNE QUI CHANGE TOUT */
-    letter-spacing: -0.5px !important; /* On resserre légèrement */
-    line-height: 1.1 !important;
+  /* 2. TITRE MOBILE : Gestion intelligente de la taille */
+  .safe-title-zone, h1 {
+    font-size: clamp(1.5rem, 10vw, 2.5rem) !important;
+    letter-spacing: -0.02em !important;
     width: 100%;
     text-align: center;
-    padding: 0 !important;
     margin: 0 auto !important;
     
     /* Sécurité absolue anti-débordement */
     overflow-wrap: break-word !important;
     word-break: break-word !important;
+    
+    /* Sur mobile, on garde un gros padding aussi par sécurité */
+    padding-right: 0.8em !important;
+    margin-right: -0.4em !important;
   }
 }

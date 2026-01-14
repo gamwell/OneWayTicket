@@ -14,19 +14,17 @@ import { PublicRoute } from "./components/PublicRoute";
 import { AutoLogout } from "./components/AutoLogout"; 
 
 // --- PAGES (Lazy Loading) ---
-// Note : Assurez-vous que les noms de fichiers sur votre disque correspondent EXACTEMENT (Majuscules incluses)
 const HomePage           = lazy(() => import("./pages/HomePage"));
 const EventsPage         = lazy(() => import("./pages/EventsPage"));
 const CartPage           = lazy(() => import("./pages/CartPage"));
 const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
+// Ajout de la page Profil (créée précédemment)
+const ProfilePage        = lazy(() => import("./pages/ProfilePage"));
 
 // Auth
 const LoginPage          = lazy(() => import("./pages/auth/LoginPage")); 
 const Register           = lazy(() => import("./pages/auth/Register")); 
 const AuthCallback       = lazy(() => import("./pages/auth/Callback")); 
-
-// ✅ CORRECTION/VÉRIFICATION : Import de ForgotPassword
-// Assurez-vous que le fichier s'appelle exactement ForgotPassword.tsx dans src/pages/auth/
 const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword")); 
 
 // Dashboards & Pivot
@@ -37,17 +35,18 @@ const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage")
 // Admin spécifique
 const NewEventPage       = lazy(() => import("./pages/admin/NewEventPage"));
 
-// Loader de page stylisé
+// Loader de page stylisé (Mis à jour aux couleurs du thème)
 const PageLoader = () => (
-  <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0f172a] z-[9999]">
+  // FOND PRUNE FORCÉ
+  <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#1a0525] z-[9999]">
     <div className="relative w-16 h-16">
       <svg className="animate-spin w-full h-full" viewBox="0 0 50 50">
-        <circle className="opacity-25" cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="4" fill="none" />
-        <circle className="text-cyan-400" cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="4" strokeDasharray="31.4 31.4" fill="none" />
+        <circle className="opacity-25" cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="4" fill="none" className="text-rose-500" />
+        <circle className="text-amber-300" cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="4" strokeDasharray="31.4 31.4" fill="none" />
       </svg>
     </div>
-    <p className="text-cyan-400 font-black uppercase tracking-[0.3em] text-[9px] mt-6 animate-pulse">
-      Initialisation Sécurisée...
+    <p className="text-amber-200 font-black uppercase tracking-[0.3em] text-[9px] mt-6 animate-pulse">
+      Initialisation...
     </p>
   </div>
 );
@@ -61,7 +60,8 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white flex flex-col font-sans selection:bg-cyan-500/30">
+    // FOND GLOBAL : Prune Profond (#1a0525)
+    <div className="min-h-screen bg-[#1a0525] text-white flex flex-col font-sans selection:bg-rose-500/30">
       <AutoLogout />
       
       <Suspense fallback={<PageLoader />}>
@@ -87,8 +87,8 @@ export default function App() {
               </PublicRoute>
             } />
 
-            {/* ✅ ROUTE : Mot de passe oublié */}
-            <Route path="/auth/forgot-password" element={
+            {/* ROUTE CORRIGÉE : /auth/forgot (pour matcher le lien du Login) */}
+            <Route path="/auth/forgot" element={
               <PublicRoute>
                 <ForgotPassword />
               </PublicRoute>
@@ -97,6 +97,12 @@ export default function App() {
             <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* --- ROUTES PROTÉGÉES (COMMUNES) --- */}
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+
             <Route path="/success" element={
               <ProtectedRoute>
                 <SuccessPage />
