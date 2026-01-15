@@ -1,31 +1,29 @@
-"use client";
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { useCart } from '../contexts/CartContext';
+import { Trash2, CreditCard, Loader2 } from 'lucide-react';
 
-import {
-  ShoppingBag,
-  CreditCard,
-  Trash2,
-  ArrowLeft,
-  Loader2,
-  TicketCheck,
-  Sparkles
-} from 'lucide-react';
+// ✅ AJOUT INDISPENSABLE POUR LE DIAGNOSTIC
+import { FunctionsHttpError } from '@supabase/supabase-js';
+
+import { useCart } from '../contexts/CartContext'; 
+import { supabase } from '../lib/supabase';
 
 const CartPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { cart, total, removeFromCart } = useCart();
-
+  const { cart, removeFromCart, total } = useCart();
+   
+  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ---------------------------------------------------------
-  // 🔥 VERSION OPTIMISÉE DE handlePayment()
-  // ---------------------------------------------------------
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+    getUser();
+  }, []);
+
+  // --- FONCTION DE PAIEMENT ---
   const handlePayment = async () => {
     if (!user) {
       alert("Vous devez être connecté pour finaliser votre achat !");
@@ -33,202 +31,131 @@ const CartPage = () => {
       return;
     }
 
-    if (cart.length === 0) return;
+    if (!cart || cart.length === 0) return;
 
     setIsLoading(true);
 
     try {
-      const ticketTypeIds = cart.map(item => item.id);
-      const quantities = cart.map(item => item.quantity || 1);
+      const missingPriceIds = cart.filter((item: any) => !item.stripe_price_id);
+      if (missingPriceIds.length > 0) {
+        throw new Error("Certains billets n'ont pas de prix Stripe configuré (ID manquant).");
+      }
 
-      const { data, error } = await supabase.functions.invoke(
-        'create-checkout-session',
-        {
+      const ticketTypeIds = cart.map((item: any) => item.stripe_price_id);
+      const quantities = cart.map((item: any) => item.quantity || 1);
+
+      console.log("🚀 Envoi à Stripe:", { ticketTypeIds, quantities });
+
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
           body: {
             ticketTypeIds,
             quantities,
-            user_id: user.id, // 🔥 obligatoire
+            user_id: user.id,
             successUrl: `${window.location.origin}/dashboard?payment=success`,
             cancelUrl: `${window.location.origin}/cart?payment=cancelled`,
           },
+      });
+
+      // --- 🔍 DIAGNOSTIC DE L'ERREUR 500 ---
+      if (error) {
+        // Si c'est une erreur qui vient de la Edge Function (ex: Clé Stripe invalide)
+        if (error instanceof FunctionsHttpError) {
+          try {
+            // On essaie de lire le message JSON renvoyé par le serveur
+            const errorMessage = await error.context.json();
+            console.error("🔴 DÉTAILS DE L'ERREUR SERVEUR :", errorMessage);
+            throw new Error(`Erreur Stripe : ${JSON.stringify(errorMessage)}`);
+          } catch (jsonError) {
+            // Si le serveur n'a même pas renvoyé de JSON (crash total)
+            throw error;
+          }
+        } else {
+          throw error;
         }
-      );
+      }
 
-      if (error) throw error;
-
-      if (data?.url) {
+      if (data && data.url) {
         window.location.href = data.url;
       } else {
         throw new Error("Le service de paiement n'a pas pu générer de lien.");
       }
 
-    } catch (error: any) {
-      console.error("Erreur paiement panier:", error);
-      alert(error.message || "Erreur lors de la liaison avec Stripe.");
+    } catch (err: any) {
+      console.error("❌ Erreur paiement panier:", err);
+      
+      let message = "Erreur inconnue.";
+      if (typeof err === 'string') message = err;
+      else if (err instanceof Error) message = err.message;
+      else if (err && typeof err === 'object' && err.message) message = String(err.message);
+      
+      alert(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ---------------------------------------------------------
-  // 🛒 PANIER VIDE
-  // ---------------------------------------------------------
-  if (cart.length === 0) {
+  // --- AFFICHAGE SI PANIER VIDE ---
+  if (!cart || cart.length === 0) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center p-4 text-white relative overflow-hidden"
-        style={{ background: '#1a0525' }}
-      >
-        <div className="fixed inset-0 z-[0] pointer-events-none">
-          <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-rose-500/15 blur-[130px] rounded-full"></div>
-          <div className="absolute bottom-[5%] right-[-5%] w-[60%] h-[60%] bg-amber-400/10 blur-[160px] rounded-full"></div>
-        </div>
-
-        <div className="bg-white/5 p-12 rounded-[3rem] border border-white/10 text-center max-w-md backdrop-blur-xl relative z-10 shadow-2xl">
-          <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingBag className="text-white/20" size={40} />
-          </div>
-
-          <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-4">
-            Panier vide
-          </h2>
-
-          <p className="text-rose-100/50 mb-8 font-medium">
-            L'aventure n'attend que vous.
-          </p>
-
-          <button
-            onClick={() => navigate('/events')}
-            className="px-8 py-4 bg-white text-[#1a0525] font-black rounded-2xl uppercase tracking-widest hover:bg-amber-300 transition-all shadow-lg"
-          >
-            Explorer les Events
-          </button>
-        </div>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-white">
+        <h2 className="text-2xl font-bold mb-4">Votre panier est vide</h2>
+        <button 
+          onClick={() => navigate('/events')}
+          className="px-6 py-2 bg-rose-600 rounded-full hover:bg-rose-700 transition"
+        >
+          Découvrir les événements
+        </button>
       </div>
     );
   }
 
-  // ---------------------------------------------------------
-  // 🛒 PANIER PLEIN
-  // ---------------------------------------------------------
+  // --- AFFICHAGE PANIER ---
   return (
-    <div
-      className="min-h-screen text-white pt-24 pb-20 px-4 relative overflow-hidden"
-      style={{ background: '#1a0525' }}
-    >
-      <div className="fixed inset-0 z-[0] pointer-events-none">
-        <div className="absolute top-[-20%] right-[-10%] w-[80%] h-[80%] bg-rose-500/10 blur-[150px] rounded-full"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-amber-400/5 blur-[180px] rounded-full"></div>
-      </div>
+    <div className="container mx-auto px-4 py-8 max-w-4xl text-white">
+      <h1 className="text-3xl font-bold mb-8 text-amber-300">Mon Panier</h1>
 
-      <div className="max-w-6xl mx-auto relative z-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <button
-            onClick={() => navigate('/events')}
-            className="flex items-center gap-2 text-rose-200/50 hover:text-white transition-colors font-bold uppercase text-[10px] tracking-[0.2em]"
-          >
-            <ArrowLeft size={16} /> Retour boutique
-          </button>
+      <div className="bg-white/5 rounded-xl p-6 backdrop-blur-sm border border-white/10">
+        {cart.map((item: any) => (
+          <div key={item.id} className="flex justify-between items-center py-4 border-b border-white/10 last:border-0">
+            <div>
+              <h3 className="font-bold text-lg">{item.title || "Billet"}</h3>
+              <p className="text-sm text-gray-400">Quantité: {item.quantity || 1}</p>
+              {/* Petite aide visuelle pour vérifier l'ID Stripe */}
+              <p className="text-[10px] text-gray-600 font-mono">{item.stripe_price_id}</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="font-mono text-xl">{item.price}€</span>
+              <button 
+                onClick={() => removeFromCart(item.id)}
+                className="text-red-400 hover:text-red-300 p-2"
+                title="Supprimer"
+              >
+                <Trash2 size={20} />
+              </button>
+            </div>
+          </div>
+        ))}
 
-          <div className="text-right">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase mb-2 text-amber-200">
-              <Sparkles size={10} className="text-amber-300" /> Sécurisé
+        <div className="mt-8 pt-6 border-t border-white/20 flex flex-col items-end">
+            <div className="text-2xl font-bold mb-6">
+                Total: <span className="text-amber-300">{total}€</span>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter uppercase">
-              Mon{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-300">
-                Panier
-              </span>
-            </h1>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* LISTE DES ARTICLES */}
-          <div className="lg:col-span-2 space-y-4">
-            {cart.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white/5 backdrop-blur-md border border-white/10 rounded-[2.5rem] p-5 flex items-center gap-6 group hover:bg-white/10 transition-all"
-              >
-                <div className="w-20 h-20 shrink-0 rounded-2xl overflow-hidden border border-white/5 bg-slate-900">
-                  <img
-                    src={item.image_url}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                </div>
-
-                <div className="flex-1">
-                  <h3 className="text-lg font-black uppercase tracking-tighter italic leading-none mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-rose-100/40 text-[10px] font-black uppercase tracking-widest">
-                    {item.date
-                      ? new Date(item.date).toLocaleDateString()
-                      : 'Date flexible'}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-amber-300 font-black text-xl mb-1">
-                    {item.price} €
-                  </p>
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    className="p-2 text-white/20 hover:text-rose-400 transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* RÉSUMÉ ET PAIEMENT */}
-          <div className="lg:col-span-1">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 sticky top-28 shadow-2xl">
-              <h2 className="text-xl font-black italic tracking-tighter uppercase mb-8 flex items-center gap-2">
-                <TicketCheck className="text-amber-300" /> Résumé
-              </h2>
-
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">
-                  <span>Articles</span>
-                  <span>{cart.length}</span>
-                </div>
-
-                <div className="flex justify-between items-end">
-                  <span className="font-bold text-[10px] uppercase tracking-[0.3em] text-white/40">
-                    Total
-                  </span>
-                  <span className="text-4xl font-black text-amber-300">
-                    {total} €
-                  </span>
-                </div>
-              </div>
-
-              <button
+            <button
                 onClick={handlePayment}
                 disabled={isLoading}
-                className="w-full py-5 rounded-2xl bg-gradient-to-r from-amber-300 to-rose-500 font-black text-[#1a0525] uppercase tracking-widest shadow-xl hover:-translate-y-1 active:scale-95 transition-all disabled:opacity-50 flex justify-center items-center gap-3"
-              >
+                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white font-bold py-3 px-8 rounded-full transform transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
                 {isLoading ? (
-                  <Loader2 className="animate-spin" />
+                    <>
+                        <Loader2 className="animate-spin" /> Traitement...
+                    </>
                 ) : (
-                  <>
-                    <CreditCard size={20} /> Payer
-                  </>
+                    <>
+                        <CreditCard size={20} /> Payer maintenant
+                    </>
                 )}
-              </button>
-
-              <p className="mt-8 text-[9px] text-white/30 text-center uppercase tracking-widest font-bold leading-relaxed">
-                Paiement crypté SSL <br />
-                Confirmation instantanée
-              </p>
-            </div>
-          </div>
+            </button>
         </div>
       </div>
     </div>

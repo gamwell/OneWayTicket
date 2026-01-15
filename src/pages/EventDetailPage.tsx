@@ -45,15 +45,15 @@ const EventDetailPage = () => {
     loadData();
   }, [loadData]);
 
-  // --- ACTION : AJOUTER AU PANIER (CORRIGÉ POUR STRIPE) ---
+  // --- ACTION : AJOUTER AU PANIER (CORRIGÉ & RÉPARÉ) ---
   const handleAddToCart = async () => {
     if (!event) return;
 
     try {
-      // Pour que le panier fonctionne avec Stripe, on doit envoyer l'ID du TYPE de billet
+      // ✅ CORRECTION ICI : On demande explicitement 'stripe_price_id' à la base de données
       const { data: ticketTypes, error: typeError } = await supabase
         .from('ticket_types')
-        .select('id')
+        .select('id, stripe_price_id') 
         .eq('event_id', id);
 
       if (typeError || !ticketTypes || ticketTypes.length === 0) {
@@ -63,9 +63,10 @@ const EventDetailPage = () => {
 
       const selectedTicketType = ticketTypes[0];
 
-      // On ajoute au panier en utilisant l'ID du ticket_type
+      // ✅ CORRECTION ICI : On transmet 'stripe_price_id' au Context du Panier
       addToCart({
-        id: selectedTicketType.id, // ID requis par la Edge Function Stripe
+        id: selectedTicketType.id,
+        stripe_price_id: selectedTicketType.stripe_price_id, // Indispensable pour Stripe !
         event_id: event.id,
         title: event.title,
         price: event.price,

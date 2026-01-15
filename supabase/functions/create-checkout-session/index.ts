@@ -1,56 +1,78 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import Stripe from "npm:stripe@14.16.0";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { Stripe } from "https://esm.sh/stripe@14.21.0?target=deno"
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-  httpClient: Stripe.createFetchHttpClient(),
-});
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 serve(async (req) => {
+  // 1. Gérer les requêtes OPTIONS (CORS)
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
-    const { ticketTypeIds, quantities, successUrl, cancelUrl, user_id } =
-      await req.json();
+    // 2. Initialiser Stripe avec la clé secrète
+    // Assurez-vous que STRIPE_SECRET_KEY est bien dans vos Secrets Supabase
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
+      apiVersion: '2023-10-16',
+      httpClient: Stripe.createFetchHttpClient(),
+    })
 
-    if (!user_id) {
-      return new Response(JSON.stringify({ error: "Missing user_id" }), {
-        status: 400,
-      });
+    // 3. Récupérer les données envoyées par le React
+    const { ticketTypeIds, quantities, successUrl, cancelUrl } = await req.json()
+
+    // 4. Validation basique
+    if (!ticketTypeIds || !quantities || ticketTypeIds.length !== quantities.length) {
+      throw new Error('Données invalides : ticketTypeIds et quantities doivent correspondre.')
     }
 
-    if (!ticketTypeIds || ticketTypeIds.length === 0) {
-      return new Response(JSON.stringify({ error: "Missing ticketTypeIds" }), {
-        status: 400,
-      });
-    }
+    // --- 🚨 LA CORRECTION STRIPE V2 ICI 🚨 ---
+    // On crée un "Client Test" pour satisfaire la nouvelle règle de Stripe V2
+    // Dans une version avancée, vous passeriez l'email de l'utilisateur ici.
+    const customer = await stripe.customers.create({
+      email: 'client_test@example.com', 
+      name: 'Client Test OneWay',
+    });
+    // -----------------------------------------
 
-    // ⚠️ Tu dois avoir un price_id Stripe par ticket_type_id
-    // Exemple : price_123, price_456
-    const line_items = ticketTypeIds.map((id, index) => ({
-      price: id, // id = price_id Stripe
-      quantity: quantities[index] || 1,
-    }));
+    // 5. Construire la liste des articles (Line Items)
+    const line_items = ticketTypeIds.map((id: string, index: number) => ({
+      price: id, // C'est ici qu'on met l'ID "price_..."
+      quantity: quantities[index],
+    }))
 
+    console.log("Création session pour :", line_items)
+
+    // 6. Créer la session de paiement AVEC le client
     const session = await stripe.checkout.sessions.create({
-      mode: "payment",
+      customer: customer.id, // <--- AJOUT OBLIGATOIRE POUR V2
       line_items,
+      mode: 'payment',
       success_url: successUrl,
       cancel_url: cancelUrl,
+    })
 
-      metadata: {
-        user_id,
-        ticket_type_ids: ticketTypeIds.join(","),
-      },
+    // 7. Renvoyer l'URL au React
+    return new Response(
+      JSON.stringify({ url: session.url }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
 
-      customer_creation: "always",
-    });
-
-    return new Response(JSON.stringify({ url: session.url }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    console.error("❌ Error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-    });
+  } catch (error) {
+    // Gestion propre des erreurs pour le React
+    console.error("Erreur Edge Function:", error)
+    
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, // On renvoie 400 pour que le client puisse lire le JSON
+      }
+    )
   }
-});
+})
