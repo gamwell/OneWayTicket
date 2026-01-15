@@ -1,57 +1,70 @@
-import React from 'react';
+"use client"
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Ticket, User, Calendar, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useCart } from '../contexts/CartContext';
+import { supabase } from '../lib/supabase';
+import { Ticket, User, Calendar, ArrowRight, Loader2, MapPin, Trash2, RefreshCw } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 const DashboardPage = () => {
   const { user, profile } = useAuth();
+  const { clearCart } = useCart();
+  const [searchParams] = useSearchParams();
+  
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // --- LOGIQUE DE VIDAGE DU PANIER ---
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    
+    if (paymentStatus === 'success') {
+      console.log("💳 Détection d'un paiement réussi. Tentative de vidage du panier...");
+      
+      // On appelle la fonction de vidage
+      clearCart();
+
+      // On nettoie l'URL pour éviter de vider le panier à nouveau au prochain refresh
+      // On attend un micro-instant pour s'assurer que clearCart a commencé
+      setTimeout(() => {
+        window.history.replaceState({}, '', window.location.pathname);
+        console.log("🧹 URL nettoyée et panier normalement vide.");
+      }, 100);
+    }
+  }, [searchParams, clearCart]);
+
+  // --- LE RESTE DE TON CODE (Chargement des billets) ---
+  const fetchUserTickets = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          event:event_id (title, date, location, image_url)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTickets(data || []);
+    } catch (err) {
+      console.error("Erreur chargement billets:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchUserTickets();
+  }, [fetchUserTickets]);
+
+  // ... (Garde tes fonctions handleDelete et ton return tel quel)
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white pt-28 px-6">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-12">
-          <h1 className="text-4xl font-black italic uppercase tracking-tighter">
-            Tableau de <span className="text-cyan-400">Bord</span>
-          </h1>
-          <p className="text-slate-400 mt-2 font-medium">
-            Ravi de vous revoir, {profile?.full_name || 'Voyageur'}
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Section Profil Rapide */}
-          <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-xl">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-cyan-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <User size={32} className="text-[#0f172a]" />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Compte</p>
-                <p className="font-bold truncate">{user?.email}</p>
-              </div>
-            </div>
-            <Link to="/profile" className="w-full py-4 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition-all font-bold text-sm">
-              Gérer mon profil <ArrowRight size={16} />
-            </Link>
-          </div>
-
-          {/* Section Mes Billets */}
-          <div className="lg:col-span-2 bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-xl">
-            <h2 className="text-xl font-black uppercase italic mb-6 flex items-center gap-3">
-              <Ticket className="text-cyan-400" /> Mes Billets Récents
-            </h2>
-            
-            {/* Message si aucun billet */}
-            <div className="py-12 text-center border-2 border-dashed border-white/5 rounded-3xl">
-              <Calendar className="mx-auto text-slate-700 mb-4" size={48} />
-              <p className="text-slate-500 font-bold italic">Vous n'avez pas encore de billets pour le futur.</p>
-              <Link to="/events" className="text-cyan-400 font-bold hover:underline mt-4 inline-block">
-                Explorer les événements
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#1a0525] text-white pt-28 px-6 pb-20">
+      {/* ... reste de ton JSX ... */}
     </div>
   );
 };

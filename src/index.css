@@ -1,55 +1,37 @@
 /* ============================================================
-   0. CONFIGURATION TAILWIND v4
+   0. CONFIGURATION TAILWIND v4 & THEME
    ============================================================ */
 @import "tailwindcss";
 
 @theme {
-  --font-montserrat: "Poppins", sans-serif;
+  /* Correction : On nomme la variable par son vrai nom pour éviter la confusion */
+  --font-poppins: "Poppins", sans-serif;
 
   /* Variables de thème standard */
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(0 0% 14.5%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(0 0% 14.5%);
-  --color-primary: hsl(0 0% 20.5%);
-  --color-primary-foreground: hsl(0 0% 98.5%);
-  --color-secondary: hsl(0 0% 97%);
-  --color-secondary-foreground: hsl(0 0% 20.5%);
-  --color-muted: hsl(0 0% 97%);
-  --color-muted-foreground: hsl(0 0% 55.6%);
-  --color-accent: hsl(0 0% 97%);
-  --color-accent-foreground: hsl(0 0% 20.5%);
+  --color-background: hsl(0 0% 14.5%); /* Mis en sombre par défaut selon l'image */
+  --color-foreground: hsl(0 0% 98.5%);
+  --color-card: hsl(0 0% 14.5%);
+  --color-card-foreground: hsl(0 0% 98.5%);
+  --color-primary: hsl(0 0% 98.5%);
+  --color-primary-foreground: hsl(0 0% 20.5%);
+  --color-secondary: hsl(0 0% 26.9%);
+  --color-secondary-foreground: hsl(0 0% 98.5%);
+  --color-muted: hsl(0 0% 26.9%);
+  --color-muted-foreground: hsl(0 0% 70.8%);
+  --color-accent: hsl(0 0% 26.9%);
+  --color-accent-foreground: hsl(0 0% 98.5%);
   --color-destructive: hsl(0 84.2% 60.2%);
   --color-destructive-foreground: hsl(0 0% 98%);
-  --color-border: hsl(0 0% 92.2%);
-  --color-input: hsl(0 0% 92.2%);
+  --color-border: hsl(0 0% 26.9%);
+  --color-input: hsl(0 0% 26.9%);
   --color-ring: hsl(0 0% 70.8%);
   --radius-custom: 0.625rem;
 }
 
 /* ============================================================
-   1. VARIABLES & BASE
+   1. BASE & RESET
    ============================================================ */
 @layer base {
-  .dark {
-    --color-background: hsl(0 0% 14.5%);
-    --color-foreground: hsl(0 0% 98.5%);
-    --color-card: hsl(0 0% 14.5%);
-    --color-card-foreground: hsl(0 0% 98.5%);
-    --color-primary: hsl(0 0% 98.5%);
-    --color-primary-foreground: hsl(0 0% 20.5%);
-    --color-secondary: hsl(0 0% 26.9%);
-    --color-secondary-foreground: hsl(0 0% 98.5%);
-    --color-muted: hsl(0 0% 26.9%);
-    --color-muted-foreground: hsl(0 0% 70.8%);
-    --color-accent: hsl(0 0% 26.9%);
-    --color-accent-foreground: hsl(0 0% 98.5%);
-    --color-destructive: hsl(0 62.8% 30.6%);
-    --color-border: hsl(0 0% 26.9%);
-    --color-input: hsl(0 0% 26.9%);
-    --color-ring: hsl(0 0% 43.9%);
-  }
-
   *, ::before, ::after {
     border-color: var(--color-border);
     box-sizing: border-box;
@@ -58,134 +40,91 @@
   html {
     overflow-x: hidden;
     width: 100%;
-    height: 100%;
-    touch-action: manipulation;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overscroll-behavior-y: none; 
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    overflow-x: hidden;
-    width: 100%;
-    min-height: 100vh;
     margin: 0;
-    padding: 0;
-    font-family: var(--font-montserrat);
-    /* Optimisation maximale du rendu de texte */
+    font-family: var(--font-poppins);
     text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
   }
-
-  /* Fix input iPhone */
-  input, select, textarea { font-size: 16px !important; }
 }
 
 #root {
-  overflow-x: hidden;
-  width: 100%;
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-main, .main-content, [data-main-container] {
-  width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
+  min-height: 100vh;
 }
 
 /* ============================================================
-   3. RESPONSIVE & CORRECTIFS
+   2. TYPOGRAPHIE & NAVIGATION
    ============================================================ */
-
-header nav a, header nav button, .navbar-link {
+header nav a, .navbar-link {
   font-weight: 700 !important;
-  letter-spacing: 0.01em;
-  font-size: clamp(1rem, 2.5vw, 1.25rem) !important;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
+  font-size: clamp(0.9rem, 2vw, 1.1rem) !important;
+  text-transform: uppercase;
 }
 
-.category-title, h2, .category-label {
+.category-title, h2 {
   font-size: clamp(1.25rem, 4vw, 1.75rem) !important;
   font-weight: 900 !important;
   text-transform: uppercase;
-  margin-bottom: 1rem;
-}
-
-footer a, footer p, footer span, footer li {
-  font-size: 1rem !important; 
-  font-weight: 500 !important;
-}
-
-@media (min-width: 768px) {
-  footer a, footer p, footer span, footer li { font-size: 1.15rem !important; }
-}
-
-a:focus, button:focus, input:focus {
-  outline: 3px solid #06b6d4 !important;
-  outline-offset: 2px;
 }
 
 /* ============================================================
-   4. SOLUTION ANTI-COUPURE & MOBILE (VERSION ULTRA FORCÉE)
+   3. SOLUTION DU TITRE "EXPLORER L'AVENTURE" (CORRIGÉ)
    ============================================================ */
 
 .safe-title-zone {
-  /* 1. On force l'élément à se comporter comme un bloc pour prendre la place */
-  display: inline-block !important;
+  /* FIX DU "E" : On utilise 'inline' pour que le fond suive le texte sans le couper */
+  display: inline !important;
+  
+  /* DESIGN : Couleur bordeaux profonde comme sur votre image */
+  background-color: #701a33 !important; 
+  color: #ffffff !important;
 
-  /* 2. PADDING MASSIF : 1em = la largeur d'une lettre entière en plus à droite */
-  padding-right: 1em !important; 
-  
-  /* Padding autour */
-  padding-top: 0.2em !important;
-  padding-bottom: 0.2em !important;
-  padding-left: 0.1em !important;
+  /* ESPACEMENT : Padding interne pour ne pas coller aux bords des lettres */
+  padding: 0.15em 0.5em !important;
 
-  /* 3. MARGE NÉGATIVE FORTE : On ramène le texte vers la gauche pour compenser le padding */
-  margin-right: -0.5em !important;
-  
-  /* 4. Force l'affichage complet */
-  overflow: visible !important;
-  
-  /* Gestion du dégradé de texte */
-  line-height: 1.4 !important; /* Hauteur de ligne augmentée pour sécurité verticale */
-  background-clip: text;
-  -webkit-background-clip: text;
-  
-  /* Sécurité largeur */
-  width: auto !important;
-  max-width: 100%;
+  /* MAGIE : Permet au fond de se cloner sur chaque ligne sans cassure */
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+
+  /* SECURITÉ : On force l'ombre et le lissage pour la netteté */
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  white-space: pre-wrap; /* Respecte les retours à la ligne */
 }
 
+/* Conteneur parent du titre (H1) */
+.hero-title-container {
+  line-height: 1.6 !important; /* Espace vertical entre les deux blocs bordeaux */
+  text-align: center;
+  overflow: visible !important; /* Très important pour ne pas couper le "E" */
+  padding: 20px 0;
+}
+
+/* ============================================================
+   4. RESPONSIVE & GRIDS
+   ============================================================ */
 @media (max-width: 768px) {
-  /* 1. Force les billets en 1 colonne sur mobile */
+  /* Force les cartes sur une seule colonne proprement */
   .grid {
     grid-template-columns: 1fr !important;
-    gap: 20px !important;
-    padding-left: 15px !important;
-    padding-right: 15px !important;
+    gap: 1.5rem !important;
+    padding: 0 1rem !important;
   }
-  
-  /* 2. TITRE MOBILE : Gestion intelligente de la taille */
-  .safe-title-zone, h1 {
-    font-size: clamp(1.5rem, 10vw, 2.5rem) !important;
-    letter-spacing: -0.02em !important;
-    width: 100%;
-    text-align: center;
-    margin: 0 auto !important;
-    
-    /* Sécurité absolue anti-débordement */
-    overflow-wrap: break-word !important;
-    word-break: break-word !important;
-    
-    /* Sur mobile, on garde un gros padding aussi par sécurité */
-    padding-right: 0.8em !important;
-    margin-right: -0.4em !important;
+
+  .safe-title-zone {
+    font-size: clamp(1.8rem, 10vw, 2.5rem) !important;
+    line-height: 1.8 !important;
   }
+}
+
+/* Accessibilité Focus */
+a:focus-visible, button:focus-visible {
+  outline: 3px solid #06b6d4 !important;
+  outline-offset: 2px;
 }

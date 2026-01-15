@@ -1,0 +1,100 @@
+.hero-section {
+  width: 100%;
+  padding: 100px 20px 60px 20px;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+  overflow: visible !important;
+}
+
+.hero-container {
+  max-width: 1200px;
+  width: 100%;
+  text-align: center;
+  overflow: visible !important;
+}
+
+/* --- BADGE "AGENDA OFFICIEL" (AGRANDI ET PLUS LISIBLE) --- */
+.badge-official {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.08); /* Contraste augmenté */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 24px; /* Padding agrandi */
+  border-radius: 50px;
+  margin-bottom: 40px;
+}
+
+.badge-text {
+  color: #f3cc4d;
+  font-size: 14px; /* Augmenté pour la visibilité */
+  font-weight: 900; /* Ultra-gras pour l'accessibilité */
+  letter-spacing: 2.5px;
+}
+
+/* --- TITRE (HARMONISÉ ET SÉCURISÉ) --- */
+.hero-main-title {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 950;
+  font-style: italic;
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin-bottom: 40px;
+  overflow: visible !important;
+}
+
+.line-white {
+  color: #ffffff;
+  font-size: clamp(2.8rem, 9vw, 5.5rem); /* Légèrement ré-augmenté pour visibilité */
+  display: inline-block;
+  padding-right: 0.15em;
+  margin-right: -0.15em;
+}
+
+.line-gradient {
+  font-size: clamp(3.2rem, 11vw, 7rem); /* Légèrement ré-augmenté pour visibilité */
+  background: linear-gradient(90deg, #f3cc4d 0%, #ff4d6d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  
+  /* Protection contre le "E" cassé */
+  padding-right: 35px; 
+  margin-right: -35px; 
+  overflow: visible !important;
+}
+
+/* --- DESCRIPTION ET BOUTON --- */
+.hero-content-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+.hero-tagline {
+  color: rgba(255, 255, 255, 0.6); /* Contraste légèrement augmenté */
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  font-style: italic;
+  max-width: 750px;
+  line-height: 1.6;
+}
+
+.hero-cta-btn {
+  background-color: #ffffff;
+  color: #1a0525;
+  padding: 20px 60px;
+  border-radius: 50px;
+  font-weight: 900;
+  font-size: 1.1rem; /* Texte bouton plus gros */
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+}
+
+.hero-cta-btn:hover {
+  transform: translateY(-4px);
+  background-color: #f3cc4d;
+}

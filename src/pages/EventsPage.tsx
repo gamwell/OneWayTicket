@@ -1,204 +1,237 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Calendar, ArrowRight, Loader2, Filter, Lock, UserPlus, LogIn, X } from 'lucide-react';
+"use client"
 
-const Events = () => {
+import React, { useEffect, useState, useCallback } from "react"
+import { useNavigate } from "react-router-dom"
+import { supabase } from "../lib/supabase"
+// Utilisation de votre galerie locale pour les images
+import { getEventImage } from "../utils/galleryEvents" 
+
+import { 
+  Loader2, Music, Trophy, Theater, Plane, Cpu, SearchX, 
+  RefreshCcw, Star, LayoutGrid, Search, MapPin, ArrowRight, 
+  Lock, X, Sparkles 
+} from "lucide-react"
+
+const ICON_MAP = {
+  Musique: <Music size={20} />, 
+  Concert: <Music size={20} />,
+  Sport: <Trophy size={20} />, 
+  Théâtre: <Theater size={20} />,
+  Spectacle: <Theater size={20} />, 
+  Tech: <Cpu size={20} />,
+  Voyage: <Plane size={20} />, 
+  Festival: <Star size={20} />,
+  Autre: <LayoutGrid size={20} />,
+}
+
+const EventsPage = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // État pour gérer l'affichage de la fenêtre d'avertissement
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [allEvents, setAllEvents] = useState([])
+  const [displayedEvents, setDisplayedEvents] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeFilter, setActiveFilter] = useState("TOUT")
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase.from('events').select('*').order('date', { ascending: true });
-        if (error) throw error;
-        setEvents(data || []);
-      } catch (error) { console.error('Error fetching events:', error); } 
-      finally { setLoading(false); }
-    };
-    fetchEvents();
-  }, []);
+  // --- CHARGEMENT DES DONNÉES ---
+  const fetchData = useCallback(async () => {
+    if (!supabase) return;
+    setLoading(true)
+    try {
+      const { data: catsData } = await supabase.from("event_categories").select("*").order("id")
+      setCategories(catsData || [])
 
-  // --- LOGIQUE D'INTERCEPTION ---
-  const handleBookingClick = async (eventId: string) => {
-    // Vérifie si l'utilisateur est connecté
-    const { data: { session } } = await supabase.auth.getSession();
+      const { data: eventsData, error: eventsError } = await supabase
+        .from("events")
+        .select(`
+          *,
+          event_categories!fk_event_category (
+            id,
+            name,
+            color
+          )
+        `)
+        .order("date", { ascending: true })
 
-    if (session) {
-      // ✅ Connecté : On va vers la page de l'événement
-      navigate(`/events/${eventId}`);
-    } else {
-      // ❌ Pas connecté : On ouvre la fenêtre d'avertissement
-      setShowAuthModal(true);
+      if (eventsError) throw eventsError;
+
+      const cleanedEvents = (eventsData || []).map(event => ({
+        ...event,
+        category_data: Array.isArray(event.event_categories) 
+          ? event.event_categories[0] 
+          : event.event_categories
+      }));
+
+      setAllEvents(cleanedEvents)
+      setDisplayedEvents(cleanedEvents)
+    } catch (error) { 
+      console.error("Erreur de récupération Supabase:", error) 
+      const { data: fallbackData } = await supabase.from("events").select("*")
+      setAllEvents(fallbackData || [])
+      setDisplayedEvents(fallbackData || [])
+    } finally { 
+      setLoading(false) 
     }
+  }, [])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  // --- LOGIQUE DE FILTRE ET RECHERCHE ---
+  useEffect(() => {
+    let filtered = allEvents;
+    if (activeFilter !== "TOUT") {
+      filtered = filtered.filter(e => e.category_id === activeFilter);
+    }
+    if (searchTerm) {
+      filtered = filtered.filter(e => 
+        e.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        e.location?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    setDisplayedEvents(filtered);
+  }, [activeFilter, searchTerm, allEvents]);
+
+  const handleBookingClick = (eventId) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate(`/events/${eventId}`);
+      else setShowAuthModal(true);
+    });
   };
 
-  const filteredEvents = events.filter(event =>
-    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    // FOND FORCÉ : Prune Profond (#1a0525)
-    <div className="min-h-screen text-white relative overflow-hidden" style={{ background: '#1a0525' }}>
+    <div className="min-h-screen text-white relative overflow-x-hidden" style={{ background: '#1a0525' }}>
       
-      {/* --- AMBIANCE LUMINEUSE --- */}
+      {/* EFFETS DE FOND LUMINEUX */}
       <div className="fixed inset-0 z-[0] pointer-events-none">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("https://grainy-gradients.vercel.app/noise.svg")` }}></div>
-        {/* Lumière Turquoise (Fraîcheur lointaine) */}
         <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-teal-500/10 blur-[130px] rounded-full"></div>
-        {/* Lumière Rose (Chaleur proche) */}
         <div className="absolute bottom-[5%] right-[-5%] w-[55%] h-[55%] bg-rose-500/15 blur-[160px] rounded-full"></div>
       </div>
 
       <div className="relative z-10 container mx-auto px-6 py-24">
         
-        {/* --- EN-TÊTE --- */}
+        {/* EN-TÊTE ET FILTRES */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-xs font-bold tracking-[0.3em] uppercase mb-6 text-amber-200 shadow-lg">
-            <Calendar size={14} className="text-amber-300" /> 
-            Agenda Officiel
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black tracking-[0.3em] uppercase mb-6 text-amber-200">
+            <Sparkles size={12} /> Agenda Officiel
           </div>
-          
-          <h1 className="text-4xl md:text-7xl font-black tracking-tighter uppercase italic mb-8">
-            Catalogue <br />
-            <span className="bg-gradient-to-r from-amber-200 via-rose-300 to-teal-200 bg-clip-text text-transparent py-2 pr-4 inline-block">
-              EXCLUSIF
+
+          {/* TITRE CORRIGÉ ICI */}
+          <h1 className="text-4xl md:text-7xl font-black tracking-tighter uppercase italic mb-10 leading-[1.1]">
+            <span className="block">Explorer</span> 
+            <span className="relative inline-block pr-8 -mr-8 text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-rose-500 overflow-visible">
+              L'aventure
             </span>
           </h1>
-          
-          {/* BARRE DE RECHERCHE LUXE */}
-          <div className="max-w-xl mx-auto relative group">
-             {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-500 via-amber-400 to-teal-400 rounded-full opacity-20 group-hover:opacity-40 blur transition-opacity duration-500"></div>
-            <div className="relative bg-[#2a0a2e]/80 backdrop-blur-xl border border-white/10 rounded-full p-2 flex items-center shadow-2xl">
+
+          {/* BARRE DE RECHERCHE */}
+          <div className="max-w-xl mx-auto relative mb-12 group">
+            <div className="absolute inset-0 bg-gradient-to-r from-rose-500 via-amber-400 to-teal-400 rounded-full opacity-20 blur transition-opacity"></div>
+            <div className="relative bg-[#2a0a2e]/80 backdrop-blur-xl border border-white/10 rounded-full p-2 flex items-center">
               <Search className="ml-4 text-white/40" size={20} />
               <input 
                 type="text" 
-                placeholder="Artiste, Lieu, Expérience..." 
-                className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-white/30 px-4 font-bold outline-none"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher un événement..." 
+                className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-white/30 px-4 font-bold outline-none" 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
               />
-              <button className="p-3 bg-white text-[#1a0525] rounded-full hover:bg-amber-300 transition-colors">
-                <Filter size={18} />
-              </button>
             </div>
           </div>
+
+          {/* NAVIGATION CATÉGORIES */}
+          <nav className="flex flex-wrap justify-center gap-3">
+            <button 
+              onClick={() => setActiveFilter("TOUT")} 
+              className={`px-6 py-3 rounded-full font-black uppercase text-[10px] border transition-all ${activeFilter === "TOUT" ? "bg-white text-black border-white shadow-xl scale-105" : "bg-white/5 text-white/50 border-white/10"}`}
+            >
+              <RefreshCcw size={14} className="mr-2 inline" /> Tous
+            </button>
+            {categories.map((cat) => (
+              <button 
+                key={cat.id} 
+                onClick={() => setActiveFilter(cat.id)} 
+                className={`px-6 py-3 rounded-full font-black uppercase text-[10px] border transition-all ${activeFilter === cat.id ? "text-white border-white shadow-lg scale-105" : "bg-white/5 text-white/50 border-white/10"}`} 
+                style={activeFilter === cat.id ? { backgroundColor: cat.color, borderColor: cat.color } : {}}
+              >
+                {ICON_MAP[cat.name] || <LayoutGrid size={14} className="mr-2 inline" />} {cat.name}
+              </button>
+            ))}
+          </nav>
         </div>
 
-        {/* --- GRILLE ÉVÉNEMENTS --- */}
+        {/* GRILLE D'ÉVÉNEMENTS */}
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-rose-400" size={40} />
+          <div className="flex flex-col items-center py-20 gap-4">
+            <Loader2 className="animate-spin text-amber-300" size={40} />
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Mise à jour...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredEvents.map((event) => (
-              <div key={event.id} className="group bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 overflow-hidden hover:border-amber-300/30 transition-all duration-300 hover:-translate-y-2 hover:bg-white/10 shadow-2xl flex flex-col">
+            {displayedEvents.length > 0 ? (
+              displayedEvents.map((event) => {
+                const categoryName = event.category_data?.name || "Autre";
+                const finalImage = getEventImage(categoryName);
                 
-                {/* Image */}
-                <div className="h-64 relative overflow-hidden">
-                  <img 
-                    src={event.image_url || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80'} 
-                    alt={event.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-xs font-bold text-amber-300 uppercase tracking-wider">
-                    {new Date(event.date).toLocaleDateString()}
-                  </div>
-                </div>
-
-                {/* Contenu */}
-                <div className="p-8 flex-1 flex flex-col">
-                  <div className="mb-4">
-                      <h3 className="text-2xl font-black italic uppercase leading-none mb-2 text-white line-clamp-2">{event.title}</h3>
-                      <div className="flex items-center gap-2 text-sm text-rose-100/60 font-medium">
-                        <MapPin size={14} className="text-rose-400" />
-                        {event.location}
+                return (
+                  <div key={event.id} className="group bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 overflow-hidden hover:border-amber-300/30 transition-all duration-300 hover:-translate-y-2 flex flex-col h-full shadow-2xl">
+                    <div className="h-64 relative overflow-hidden bg-slate-900">
+                      <img src={finalImage} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[10px] font-black text-amber-300 uppercase">
+                        {new Date(event.date).toLocaleDateString()}
                       </div>
+                      <div 
+                        className="absolute bottom-4 left-4 px-3 py-1 rounded-lg text-[9px] font-black uppercase text-white shadow-lg"
+                        style={{ backgroundColor: event.category_data?.color || '#334155' }}
+                      >
+                        {categoryName}
+                      </div>
+                    </div>
+                    <div className="p-8 flex flex-col flex-1">
+                      <h3 className="text-2xl font-black italic uppercase text-white mb-2 line-clamp-1">{event.title}</h3>
+                      <div className="flex items-center gap-2 text-xs text-rose-200/50 font-bold mb-6">
+                        <MapPin size={14} className="text-rose-400" /> {event.location || "Lieu à confirmer"}
+                      </div>
+                      <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
+                        <span className="text-3xl font-black text-amber-300">{event.price}€</span>
+                        <button 
+                          onClick={() => handleBookingClick(event.id)} 
+                          className="px-6 py-4 bg-white text-[#1a0525] rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-300 transition-all flex items-center gap-2 shadow-xl"
+                        >
+                          Réserver <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-3xl font-black text-amber-300">
-                      {event.price}€
-                    </span>
-                    
-                    {/* BOUTON MODIFIÉ : INTERCEPTE LE CLIC */}
-                    <button 
-                      onClick={() => handleBookingClick(event.id)}
-                      className="px-6 py-3 bg-white text-[#1a0525] rounded-xl font-bold text-sm uppercase tracking-wider hover:bg-rose-400 hover:text-white transition-all flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer"
-                    >
-                      Réserver <ArrowRight size={16} />
-                    </button>
-                  </div>
-                </div>
+                )
+              })
+            ) : (
+              <div className="col-span-full py-20 flex flex-col items-center gap-6 opacity-30">
+                <SearchX size={80} />
+                <p className="text-xl font-black uppercase tracking-widest italic text-center">Aucun événement</p>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
 
-      {/* --- MODAL D'AVERTISSEMENT (POP-UP) --- */}
+      {/* MODAL AUTHENTICATION */}
       {showAuthModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-          {/* Fond sombre flouté (clic pour fermer) */}
-          <div 
-            className="absolute inset-0 bg-[#0f0214]/80 backdrop-blur-md transition-opacity animate-in fade-in" 
-            onClick={() => setShowAuthModal(false)}
-          ></div>
-
-          {/* Contenu de la modal */}
-          <div className="bg-[#2a0a2e] border border-white/20 rounded-[2.5rem] p-8 max-w-sm w-full relative z-10 shadow-[0_0_50px_-10px_rgba(251,191,36,0.2)] animate-in zoom-in duration-300">
-            
-            <button 
-              onClick={() => setShowAuthModal(false)}
-              className="absolute top-4 right-4 p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors text-white/50 hover:text-white"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-rose-500/20 rounded-2xl flex items-center justify-center mb-6 border border-rose-500/30 shadow-lg shadow-rose-500/10">
-                <Lock className="text-rose-300" size={32} />
+          <div className="absolute inset-0 bg-[#0f0214]/90 backdrop-blur-md" onClick={() => setShowAuthModal(false)}></div>
+          <div className="bg-[#2a0a2e] border border-white/20 rounded-[2.5rem] p-10 max-w-sm w-full relative z-10 animate-in zoom-in">
+              <button onClick={() => setShowAuthModal(false)} className="absolute top-6 right-6 text-white/30 hover:text-white transition-colors"><X size={20} /></button>
+              <div className="flex flex-col items-center text-center">
+                <Lock className="text-rose-400 mb-6" size={40} />
+                <h3 className="text-2xl font-black uppercase text-white mb-2">Accès Privé</h3>
+                <p className="text-white/50 text-xs mb-8 uppercase tracking-widest leading-relaxed">Connectez-vous pour réserver.</p>
+                <button onClick={() => navigate('/auth/login')} className="w-full py-4 bg-white text-[#1a0525] rounded-xl font-black text-[10px] uppercase tracking-widest">Se connecter</button>
               </div>
-              
-              <h3 className="text-2xl font-black italic uppercase text-white mb-2">
-                Accès <span className="text-amber-300">Réservé</span>
-              </h3>
-              
-              <p className="text-white/60 text-sm font-medium leading-relaxed mb-8">
-                Pour obtenir votre billet <strong className="text-white">OneWayTicket</strong> et accéder à cet événement, vous devez vous identifier.
-              </p>
-
-              <div className="flex flex-col gap-3 w-full">
-                <button 
-                  onClick={() => navigate('/auth/register')}
-                  className="w-full py-4 bg-gradient-to-r from-amber-300 to-rose-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
-                >
-                  <UserPlus size={16} /> Créer un compte
-                </button>
-                
-                <button 
-                  onClick={() => navigate('/auth/login')}
-                  className="w-full py-4 bg-white/5 border border-white/10 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                >
-                  <LogIn size={16} /> Me connecter
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
-
     </div>
-  );
-};
+  )
+}
 
-export default Events;
+export default EventsPage;

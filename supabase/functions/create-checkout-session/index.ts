@@ -1,136 +1,56 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import Stripe from "npm:stripe@17.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+import { serve } from "https://deno.land/std/http/server.ts";
+import Stripe from "npm:stripe@14.16.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+  httpClient: Stripe.createFetchHttpClient(),
+});
 
-interface CheckoutRequest {
-  ticketTypeIds: string[];
-  quantities: number[];
-  successUrl: string;
-  cancelUrl: string;
-}
-
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
-  }
-
+serve(async (req) => {
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_ANON_KEY") || "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization") || "" },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser();
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const { ticketTypeIds, quantities, successUrl, cancelUrl }: CheckoutRequest =
+    const { ticketTypeIds, quantities, successUrl, cancelUrl, user_id } =
       await req.json();
 
-    if (
-      !ticketTypeIds ||
-      !quantities ||
-      ticketTypeIds.length !== quantities.length
-    ) {
-      return new Response(
-        JSON.stringify({ error: "Invalid request data" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: "Missing user_id" }), {
+        status: 400,
+      });
     }
 
-    const { data: ticketTypes, error: ticketError } = await supabaseClient
-      .from("ticket_types")
-      .select("*, events:event_id(titre)")
-      .in("id", ticketTypeIds);
-
-    if (ticketError || !ticketTypes || ticketTypes.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Ticket types not found" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    if (!ticketTypeIds || ticketTypeIds.length === 0) {
+      return new Response(JSON.stringify({ error: "Missing ticketTypeIds" }), {
+        status: 400,
+      });
     }
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2024-12-18.acacia",
-    });
-
-    const lineItems = ticketTypeIds.map((id, index) => {
-      const ticketType = ticketTypes.find((t) => t.id === id);
-      if (!ticketType) throw new Error(`Ticket type ${id} not found`);
-
-      return {
-        price_data: {
-          currency: "eur",
-          product_data: {
-            name: `${ticketType.events.titre} - ${ticketType.nom}`,
-            description: ticketType.description || undefined,
-          },
-          unit_amount: Math.round(parseFloat(ticketType.prix) * 100),
-        },
-        quantity: quantities[index],
-      };
-    });
+    // ⚠️ Tu dois avoir un price_id Stripe par ticket_type_id
+    // Exemple : price_123, price_456
+    const line_items = ticketTypeIds.map((id, index) => ({
+      price: id, // id = price_id Stripe
+      quantity: quantities[index] || 1,
+    }));
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: lineItems,
       mode: "payment",
+      line_items,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      customer_email: user.email,
+
       metadata: {
-        user_id: user.id,
+        user_id,
         ticket_type_ids: ticketTypeIds.join(","),
-        quantities: quantities.join(","),
       },
+
+      customer_creation: "always",
     });
 
-    return new Response(
-      JSON.stringify({ sessionId: session.id, url: session.url }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (error) {
-    console.error("Error creating checkout session:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ url: session.url }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    console.error("❌ Error:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
 });
