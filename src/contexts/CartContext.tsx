@@ -3,14 +3,14 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 
 export interface CartItem {
-  id: string;       // IMPORTANT : C'est le ticket_type_id pour Stripe
-  event_id: string;  // Pour référence
+  id: string;
+  event_id: string;
   title: string;
   price: number;
   image_url: string;
   date: string;
   location: string;
-  quantity: number; 
+  quantity: number;
 }
 
 interface CartContextType {
@@ -25,44 +25,67 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'onewayticket_cart_v2'; // Changé en v2 pour forcer le nettoyage des anciennes données corrompues
+const STORAGE_KEY = 'onewayticket_cart_v2'; 
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+  
+  // --- INITIALISATION BLINDÉE ---
   const [cart, setCart] = useState<CartItem[]>(() => {
     if (typeof window === 'undefined') return [];
+
+    // 👇 1. DÉTECTION INTELLIGENTE STRIPE
+    // On regarde si l'URL contient les traces d'un paiement Stripe
+    const params = new URLSearchParams(window.location.search);
+    const isStripeReturn = params.has('payment_intent') || 
+                           params.has('payment_intent_client_secret') ||
+                           params.has('redirect_status');
+
+    // 👇 2. DÉTECTION DE VOS MOTS CLÉS (Au cas où)
+    const path = window.location.pathname.toLowerCase();
+    const isSuccessPage = path.includes('success') || 
+                          path.includes('confirmation') || 
+                          path.includes('merci') ||
+                          path.includes('valide');
+
+    if (isStripeReturn || isSuccessPage) {
+      console.log("💳 Retour de paiement détecté : Panier forcé à VIDE.");
+      
+      // On nettoie tout immédiatement
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('onewayticket_cart');
+      localStorage.removeItem('cart');
+      localStorage.removeItem('panier');
+      
+      return []; // On démarre vide !
+    }
+
+    // Sinon, on charge normalement
     try {
       const savedCart = localStorage.getItem(STORAGE_KEY);
-      return savedCart ? JSON.parse(savedCart) : [];
+      if (savedCart) return JSON.parse(savedCart);
     } catch (error) {
       console.error("Erreur lecture panier:", error);
-      return [];
     }
+    return [];
   });
 
-  // Sauvegarde auto
+  // Sauvegarde automatique
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-    window.dispatchEvent(new Event('cart-updated'));
-  }, [cart]);
-
-  // Sync entre onglets
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        setCart(JSON.parse(e.newValue));
+    if (typeof window !== 'undefined') {
+      if (cart.length === 0) {
+        // Si le panier est vide dans le state, on vide le stockage aussi
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
       }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    }
+  }, [cart]);
 
   const addToCart = useCallback((item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
     setCart((prevCart) => {
       const exists = prevCart.some((i) => String(i.id) === String(item.id));
       if (exists) return prevCart;
       
-      // NETTOYAGE DU PRIX : Sécurité contre le NaN
-      // On transforme en string, on enlève tout ce qui n'est pas chiffre ou point, puis on repasse en Number
       const rawPrice = String(item.price).replace(/[^\d.-]/g, '');
       const cleanPrice = parseFloat(rawPrice) || 0;
 
@@ -80,12 +103,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const clearCart = useCallback((shouldConfirm: boolean = false) => {
+    const performClear = () => {
+      setCart([]); 
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    };
+
     if (shouldConfirm) {
       if (window.confirm("Voulez-vous vraiment vider votre panier ?")) {
-        setCart([]);
+        performClear();
       }
     } else {
-      setCart([]);
+      performClear();
     }
   }, []);
 
@@ -93,7 +123,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return cart.some((item) => String(item.id) === String(id));
   }, [cart]);
 
-  // CALCUL DU TOTAL : Sécurité supplémentaire
   const total = useMemo(() => {
     return cart.reduce((acc, item) => {
       const p = Number(item.price) || 0;
@@ -105,13 +134,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const itemCount = useMemo(() => cart.length, [cart]);
 
   const value = useMemo(() => ({
-    cart,
-    addToCart,
-    removeFromCart,
-    clearCart,
-    total,
-    itemCount,
-    isInCart
+    cart, addToCart, removeFromCart, clearCart, total, itemCount, isInCart
   }), [cart, addToCart, removeFromCart, clearCart, total, itemCount, isInCart]);
 
   return (
