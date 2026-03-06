@@ -16,7 +16,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // ✅ Correction : On récupère aussi 'profile' pour checker 'is_admin'
+  // ✅ On récupère 'profile' pour valider les droits admin
   const { cart } = useCart();
   const { user, profile, logout } = useAuth(); 
 
@@ -82,13 +82,13 @@ const Navbar = () => {
             {user ? (
               <div className="flex items-center gap-4 border-l border-white/10 pl-6">
                 
-                {/* ✅ BOUTON ADMIN (Visible uniquement si is_admin est true) */}
+                {/* ✅ Correction du lien vers /admin/dashboard */}
                 {profile?.is_admin && (
                   <Link 
-                    to="/admin" 
+                    to="/admin/dashboard" 
                     className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 hover:bg-amber-500/20 transition-all text-xs font-black uppercase tracking-tighter"
                   >
-                    <Settings size={14} className="animate-spin-slow" />
+                    <Settings size={14} />
                     Admin
                   </Link>
                 )}
@@ -107,7 +107,6 @@ const Navbar = () => {
                 <button 
                   onClick={handleLogout}
                   className="p-2 text-white/50 hover:text-rose-400 transition-colors"
-                  title="Se déconnecter"
                 >
                   <LogOut size={20} />
                 </button>
@@ -115,17 +114,16 @@ const Navbar = () => {
             ) : (
               <Link 
                 to="/auth/login"
-                className="px-6 py-2.5 bg-white text-[#1a0525] rounded-xl font-black uppercase text-xs tracking-widest hover:bg-amber-300 transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(251,191,36,0.4)] hover:scale-105 flex items-center gap-2"
+                className="px-6 py-2.5 bg-white text-[#1a0525] rounded-xl font-black uppercase text-xs tracking-widest hover:bg-amber-300 transition-all flex items-center gap-2"
               >
                 <LogIn size={16} /> Connexion
               </Link>
             )}
           </div>
 
-          {/* --- BOUTON MOBILE --- */}
           <button 
             onClick={() => setIsOpen(!isOpen)} 
-            className="md:hidden text-white p-2 z-50 hover:text-amber-300 transition-colors"
+            className="md:hidden text-white p-2 z-50"
           >
             {isOpen ? <X size={32} /> : <Menu size={32} />}
           </button>
@@ -140,9 +138,9 @@ const Navbar = () => {
           <Link to="/" className="text-3xl font-black uppercase italic text-white">Accueil</Link>
           <Link to="/events" className="text-3xl font-black uppercase italic text-white">Événements</Link>
           
-          {/* ✅ Dashboard Admin en Mobile */}
+          {/* ✅ Correction du lien mobile vers /admin/dashboard */}
           {profile?.is_admin && (
-            <Link to="/admin" className="text-2xl font-black uppercase text-amber-400 flex items-center gap-2">
+            <Link to="/admin/dashboard" className="text-2xl font-black uppercase text-amber-400 flex items-center gap-2">
               <Settings size={24} /> Administration
             </Link>
           )}
@@ -159,7 +157,7 @@ const Navbar = () => {
               </button>
             </>
           ) : (
-            <Link to="/auth/login" className="w-full max-w-xs py-4 bg-white text-[#1a0525] rounded-2xl font-black uppercase">
+            <Link to="/auth/login" className="w-full max-w-xs py-4 bg-white text-[#1a0525] rounded-2xl font-black uppercase tracking-widest">
               Connexion
             </Link>
           )}

@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -11,9 +11,8 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
   const { user, profile, loading } = useAuth();
   const location = useLocation();
-  const redirected = useRef(false);
 
-  // 1️⃣ Pendant chargement global
+  // 1️⃣ Pendant le chargement (Auth ou Profil)
   if (loading) {
     return (
       <div className="min-h-screen bg-[#1a0525] flex flex-col items-center justify-center">
@@ -25,16 +24,12 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     );
   }
 
-  // 2️⃣ Pas connecté → login
+  // 2️⃣ Pas connecté du tout
   if (!user) {
-    if (!redirected.current) {
-      redirected.current = true;
-      return <Navigate to="/auth/login" state={{ from: location }} replace />;
-    }
-    return null;
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  // 3️⃣ Profil pas encore chargé → attendre
+  // 3️⃣ Connecté mais profil pas encore arrivé
   if (!profile) {
     return (
       <div className="min-h-screen bg-[#1a0525] flex flex-col items-center justify-center">
@@ -46,23 +41,19 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     );
   }
 
-  // 4️⃣ Vérification admin si nécessaire
-  // ✅ Ajout de "administrateur" pour matcher la valeur dans Supabase
-  const isAdmin =
-    profile.role === "admin" ||
-    profile.role === "superadmin" ||
-    profile.role === "administrateur" ||
-    profile.is_admin === true;
+  // 4️⃣ Vérification des droits Admin
+  // On utilise la normalisation qu'on a faite dans AuthContext
+  const isAdmin = 
+    profile.is_admin === true || 
+    ["admin", "superadmin", "administrateur"].includes(profile.role?.toLowerCase() || "");
 
   if (requireAdmin && !isAdmin) {
-    if (!redirected.current) {
-      redirected.current = true;
-      return <Navigate to="/dashboard" replace />;
-    }
-    return null;
+    console.warn("Accès Admin refusé pour :", profile.email);
+    // ⚠️ Si l'accès est refusé, on renvoie vers le dashboard classique de l'utilisateur
+    return <Navigate to="/dashboard/user" replace />;
   }
 
-  // 5️⃣ Tout est OK
+  // 5️⃣ Tout est OK -> On affiche la page demandée
   return <>{children}</>;
 };
 
