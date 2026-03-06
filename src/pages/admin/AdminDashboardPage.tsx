@@ -42,7 +42,7 @@ const AdminDashboardPage = () => {
 
         // Total utilisateurs
         const { count: usersCount } = await supabase
-          .from("profils")
+          .from("profils d'utilisateurs")
           .select("*", { count: "exact", head: true });
 
         // Billets vendus aujourd'hui
@@ -56,7 +56,7 @@ const AdminDashboardPage = () => {
         // Derniers billets vendus
         const { data: recentTickets } = await supabase
           .from("tickets")
-          .select(`*, events(title)`)
+          .select("*, events(title)")
           .order("created_at", { ascending: false })
           .limit(5);
 
@@ -312,7 +312,6 @@ const AdminDashboardPage = () => {
                   ))}
                 </div>
               )}
-
               <div className="p-3 border-t border-white/5">
                 <Link
                   to="/admin/tickets"
