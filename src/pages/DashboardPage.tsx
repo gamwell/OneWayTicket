@@ -1,72 +1,68 @@
-"use client"
-
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useCart } from '../contexts/CartContext';
-import { supabase } from '../lib/supabase';
-import { Ticket, User, Calendar, ArrowRight, Loader2, MapPin, Trash2, RefreshCw } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Ticket, User, LogOut, ArrowRight, Sparkles } from 'lucide-react';
 
 const DashboardPage = () => {
-  const { user, profile } = useAuth();
-  const { clearCart } = useCart();
-  const [searchParams] = useSearchParams();
-  
-  const [tickets, setTickets] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { profile, logout } = useAuth();
 
-  // --- LOGIQUE DE VIDAGE DU PANIER ---
-  useEffect(() => {
-    const paymentStatus = searchParams.get('payment');
-    
-    if (paymentStatus === 'success') {
-      console.log("💳 Détection d'un paiement réussi. Tentative de vidage du panier...");
-      
-      // On appelle la fonction de vidage
-      clearCart();
-
-      // On nettoie l'URL pour éviter de vider le panier à nouveau au prochain refresh
-      // On attend un micro-instant pour s'assurer que clearCart a commencé
-      setTimeout(() => {
-        window.history.replaceState({}, '', window.location.pathname);
-        console.log("🧹 URL nettoyée et panier normalement vide.");
-      }, 100);
-    }
-  }, [searchParams, clearCart]);
-
-  // --- LE RESTE DE TON CODE (Chargement des billets) ---
-  const fetchUserTickets = useCallback(async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('tickets')
-        .select(`
-          *,
-          event:event_id (title, date, location, image_url)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTickets(data || []);
-    } catch (err) {
-      console.error("Erreur chargement billets:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchUserTickets();
-  }, [fetchUserTickets]);
-
-  // ... (Garde tes fonctions handleDelete et ton return tel quel)
   return (
-    <div className="min-h-screen bg-[#1a0525] text-white pt-28 px-6 pb-20">
-      {/* ... reste de ton JSX ... */}
+    <div className="min-h-screen bg-[#1a0525] text-white pt-24 px-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6">
+          <div>
+            <h1 className="text-4xl font-black uppercase italic mb-2">
+              Bonjour, <span className="text-amber-300">{profile?.full_name || 'Membre'}</span>
+            </h1>
+            <p className="text-white/50">Bienvenue dans votre espace personnel OneWayTicket.</p>
+          </div>
+          <button 
+            onClick={logout}
+            className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-rose-500/20 hover:border-rose-500/50 hover:text-rose-300 transition-all flex items-center gap-2 font-bold uppercase text-xs tracking-widest"
+          >
+            <LogOut size={16} /> Déconnexion
+          </button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* CARTE MES BILLETS */}
+          <Link to="/my-tickets" className="group bg-gradient-to-br from-amber-500/10 to-rose-500/10 border border-white/10 p-8 rounded-[2rem] hover:border-amber-300/50 transition-all relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+              <Ticket size={120} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-amber-300 rounded-full flex items-center justify-center text-[#1a0525] mb-6">
+                <Ticket size={24} />
+              </div>
+              <h2 className="text-2xl font-black uppercase italic mb-2">Mes Billets</h2>
+              <p className="text-white/60 mb-8 max-w-xs">Retrouvez tous vos QR Codes et l'historique de vos achats.</p>
+              <div className="flex items-center gap-2 text-amber-300 font-bold uppercase text-xs tracking-widest group-hover:gap-4 transition-all">
+                Voir mes billets <ArrowRight size={16} />
+              </div>
+            </div>
+          </Link>
+
+          {/* CARTE MON PROFIL */}
+          <Link to="/profile" className="group bg-white/5 border border-white/10 p-8 rounded-[2rem] hover:bg-white/10 transition-all relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <User size={120} />
+            </div>
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-[#1a0525] mb-6">
+                <User size={24} />
+              </div>
+              <h2 className="text-2xl font-black uppercase italic mb-2">Mon Profil</h2>
+              <p className="text-white/60 mb-8 max-w-xs">Mettez à jour vos informations personnelles et préférences.</p>
+              <div className="flex items-center gap-2 text-white font-bold uppercase text-xs tracking-widest group-hover:gap-4 transition-all">
+                Gérer mon compte <ArrowRight size={16} />
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 };
 
+// ✅ EXPORT OBLIGATOIRE
 export default DashboardPage;

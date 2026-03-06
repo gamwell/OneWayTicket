@@ -1,4 +1,4 @@
-import { supabase } from './supabase.ts';
+import { supabase } from '../supabaseClient'; 
 import type { User } from '../types/database';
 
 export interface SignUpData {
@@ -29,6 +29,7 @@ export const authService = {
           telephone,
           role,
         },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
@@ -76,7 +77,7 @@ export const authService = {
 
   async resetPassword(email: string) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
     });
     if (error) throw error;
   },

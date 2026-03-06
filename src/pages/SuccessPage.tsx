@@ -1,127 +1,79 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, Home, ArrowRight, Download, Trash2 } from 'lucide-react';
-import { useCart } from '../contexts/CartContext'; // Vérifiez le chemin
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
-// ... (Gardez votre composant InvoiceButton ici tel quel) ...
-// Pour gagner de la place, je ne remets pas le code du bouton InvoiceButton 
-// car il est correct, insérez-le ici.
-const InvoiceButton = ({ orderId }: { orderId: string }) => { return <button>Facture (Placeholder)</button> }
-
-
-// --- DEBUGGER TEMPORAIRE ---
-const StorageDebugger = () => {
-  const [keys, setKeys] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setKeys(Object.keys(localStorage));
-    }
-  }, []);
-
-  return (
-    <div className="fixed bottom-0 left-0 w-full bg-black text-green-400 p-4 text-xs font-mono z-50 border-t border-green-500 opacity-90">
-      <h3 className="font-bold mb-2 text-white">🕵️ OUTIL DE DIAGNOSTIC (À supprimer avant mise en prod)</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <strong className="text-white">Clés trouvées dans LocalStorage :</strong>
-          <ul className="list-disc pl-4 mt-1">
-            {keys.map(key => (
-              <li key={key}>
-                {key}: <span className="text-white">{localStorage.getItem(key)?.slice(0, 50)}...</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-           <button 
-             onClick={() => { localStorage.clear(); window.location.reload(); }}
-             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-           >
-             <Trash2 className="inline w-4 h-4 mr-1"/> TOUT EFFACER & RECHARGER
-           </button>
-           <p className="mt-2 text-gray-400">Si le panier persiste, cliquez sur ce bouton rouge.</p>
-        </div>
-      </div>
-    </div>
-  );
-};
+import React, { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { CheckCircle, ArrowRight, Ticket } from 'lucide-react';
+import { useCart } from '../contexts/CartContext';
 
 export default function SuccessPage() {
-  const [searchParams] = useSearchParams();
-  const { clearCart, cart } = useCart();
-  const orderId = searchParams.get('orderId');
+  const { clearCart } = useCart();
+  
+  // 1. FIX ERREUR CONSOLE : On utilise useRef pour vider le panier une seule fois
   const hasCleared = useRef(false);
 
   useEffect(() => {
-    if (!hasCleared.current) {
-      console.log("Exécution du nettoyage du panier...");
-      
-      // 1. Appel Context
-      clearCart(false);
-      
-      // 2. Force Brute supplémentaire
-      localStorage.removeItem('onewayticket_cart_v2');
-      localStorage.setItem('onewayticket_cart_v2', '[]'); // On écrase
+    if (hasCleared.current) return;
 
-      hasCleared.current = true;
-    }
+    clearCart();
+    hasCleared.current = true;
+    console.log("✅ Succès : Panier vidé et navigation prête.");
   }, [clearCart]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f172a] p-6 font-sans pb-32">
-      <div className="max-w-md w-full bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] text-center shadow-2xl relative overflow-hidden">
+    <div className="min-h-screen bg-[#1a0525] flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
+      
+      {/* FOND (Derrière tout le monde) */}
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-green-900/20 via-[#1a0525] to-[#1a0525] z-0 pointer-events-none"></div>
+
+      {/* CONTENU (Devant et Cliquable) */}
+      <div className="relative z-10 max-w-lg w-full bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-500">
         
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-cyan-500/20 rounded-full blur-3xl"></div>
-        
-        <div className="flex justify-center mb-8">
-          <div className="p-5 rounded-full bg-emerald-500/10 border-2 border-emerald-500 animate-bounce">
-            <CheckCircle2 size={48} className="text-emerald-500" />
+        <div className="flex justify-center mb-6">
+          <div className="bg-green-500/20 p-4 rounded-full ring-4 ring-green-500/10">
+            <CheckCircle className="w-16 h-16 text-green-400" />
           </div>
         </div>
 
-        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-4">
-          Paiement <span className="text-cyan-400">Validé</span>
+        <h1 className="text-4xl font-black uppercase italic text-white mb-2 tracking-wide">
+          Paiement Validé !
         </h1>
         
-        {/* INDICATEUR D'ÉTAT DU PANIER */}
-        {cart.length > 0 ? (
-           <p className="text-red-400 font-bold bg-red-900/20 p-2 rounded mb-4">
-             ⚠️ ATTENTION : Le panier contient encore {cart.length} articles !
-             <br/> Regardez le panneau noir en bas.
-           </p>
-        ) : (
-           <p className="text-emerald-400 font-bold bg-emerald-900/20 p-2 rounded mb-4">
-             ✅ Le panier est bien vide.
-           </p>
-        )}
-
-        <p className="text-slate-400 mb-8 leading-relaxed">
-          Votre transaction a été traitée avec succès.
+        <p className="text-gray-300 mb-8 text-lg">
+          Merci pour votre commande. <br/> Vos billets ont été envoyés par email.
         </p>
 
-        {orderId && (
-          <div className="bg-black/20 border border-white/5 p-6 rounded-3xl mb-8">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-pink-500">ID Réservation</span>
-            <div className="text-2xl font-mono font-black text-white mt-2 mb-6">#{orderId}</div>
-            {/* Insérez <InvoiceButton orderId={orderId} /> ici */}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-4">
-          <Link to="/dashboard" className="flex items-center justify-center gap-2 text-cyan-400 font-black uppercase text-xs tracking-widest hover:text-white transition-colors p-2">
-            Mon Tableau de Bord <ArrowRight size={14} />
-          </Link>
-          <Link to="/" className="flex items-center justify-center gap-2 text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-slate-300 transition-colors">
-            <Home size={14} /> Retour à l'accueil
-          </Link>
+        {/* Info Box */}
+        <div className="bg-white/5 rounded-xl p-4 mb-8 border border-white/5">
+            <div className="flex items-center gap-4 text-left">
+                <div className="bg-amber-400/20 p-3 rounded-xl">
+                    <Ticket className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                    <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Prochaine étape</p>
+                    <p className="text-sm text-white font-medium">Vérifiez votre boîte mail (et les spams)</p>
+                </div>
+            </div>
         </div>
-      </div>
 
-      {/* COMPOSANT DE DEBUG (A enlever une fois le problème réglé) */}
-      <StorageDebugger />
+        {/* 👇 BOUTONS DE NAVIGATION (Version <Link> optimisée) 👇 */}
+        <div className="flex flex-col gap-4">
+          
+          <Link 
+            to="/my-tickets" 
+            className="w-full py-4 bg-white text-black font-bold uppercase rounded-xl hover:bg-gray-200 transition transform hover:scale-[1.02] flex items-center justify-center gap-2 shadow-lg shadow-white/10 relative z-50"
+          >
+            <Ticket size={20} />
+            VOIR MES BILLETS
+          </Link>
+
+          <Link 
+            to="/" 
+            className="w-full py-4 bg-transparent border border-white/10 text-white font-bold uppercase rounded-xl hover:bg-white/5 transition flex items-center justify-center gap-2 relative z-50"
+          >
+            RETOUR À L'ACCUEIL <ArrowRight size={20} />
+          </Link>
+
+        </div>
+
+      </div>
     </div>
   );
 }

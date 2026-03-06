@@ -1,32 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useCart } from '../contexts/CartContext';
 import { 
-  Menu, 
-  X, 
-  LogOut, 
-  LayoutDashboard, 
-  ShoppingCart,
-  Sparkles,
-  Calendar,
-  Home
+  Menu, X, ShoppingBag, User, LogOut, 
+  LayoutDashboard, ShieldCheck, LogIn 
 } from 'lucide-react';
+
+// ✅ IMPORT DES CONTEXTES
+import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const { user, logout } = useAuth();
-  const { itemCount } = useCart();
+  const [scrolled, setScrolled] = useState(false); // Pour l'effet de scroll
+  
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // ✅ Récupération sécurisée
+  const { cart } = useCart();
+  const { user, logout } = useAuth();
 
-  const handleLogout = async () => {
-    await logout();
-    setIsOpen(false);
-    navigate('/');
-  };
-
+  // ✅ Gestion du scroll pour l'effet visuel
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -35,138 +29,140 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => setIsOpen(false), [location]);
+  // ✅ Fermer le menu mobile quand on change de page
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location]);
+
+  // ✅ CALCUL DU NOMBRE D'ARTICLES
+  const cartItemCount = cart 
+    ? cart.reduce((total, item) => total + (item.quantity || 1), 0)
+    : 0;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-[1000] transition-all duration-500 ${
-      scrolled 
-        ? 'bg-[#1a0525]/90 backdrop-blur-lg border-b border-white/10 py-3 shadow-2xl' 
-        : 'bg-transparent py-5'
+    <nav className={`fixed w-full z-50 transition-all duration-300 ${
+      scrolled || isOpen
+        ? 'bg-[#1a0525]/90 backdrop-blur-xl border-b border-white/10 py-3' 
+        : 'bg-transparent border-b border-transparent py-5'
     }`}>
-      <div className="container mx-auto px-6 flex items-center justify-between">
-        
-        {/* --- LOGO (AGRANDI POUR ACCESSIBILITÉ) --- */}
-        <Link to="/" className="flex items-center gap-3 group relative z-10">
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-300 to-rose-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform duration-300">
-            <Sparkles className="text-[#1a0525]" size={26} />
-          </div>
-          <span className="text-2xl font-black italic tracking-tighter uppercase text-white">
-            OneWay<span className="text-amber-300">Ticket</span>
-          </span>
-        </Link>
-
-        {/* --- DESKTOP MENU --- */}
-        <div className="hidden md:flex items-center gap-10">
-          {/* LIEN ÉVÉNEMENTS (AGRANDI) */}
-          <Link 
-            to="/events" 
-            className={`text-sm font-black uppercase tracking-[0.15em] transition-all hover:text-amber-300 ${
-              location.pathname === '/events' ? 'text-amber-300' : 'text-white/90'
-            }`}
-          >
-            Événements
+      <div className="container mx-auto px-6">
+        <div className="flex justify-between items-center">
+          
+          {/* --- LOGO --- */}
+          <Link to="/" className="flex items-center gap-2 group z-50">
+            <div className="bg-gradient-to-tr from-amber-400 to-rose-600 p-2 rounded-lg group-hover:rotate-12 transition-transform duration-500">
+              <ShieldCheck className="text-white" size={24} />
+            </div>
+            <span className="text-2xl font-black italic tracking-tighter text-white">
+              ONEWAY<span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-rose-600">TICKET</span>
+            </span>
           </Link>
 
-          {/* PANIER (AGRANDI) */}
-          <Link to="/cart" className="relative group p-2">
-            <ShoppingCart 
-              size={26} 
-              className={`transition-transform group-hover:scale-110 ${
-                itemCount > 0 ? 'text-amber-300' : 'text-white/80'
-              }`} 
-            />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-[11px] font-black text-white rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                {itemCount}
-              </span>
-            )}
-          </Link>
+          {/* --- MENU BUREAU (Desktop) --- */}
+          <div className="hidden md:flex items-center gap-8">
+            <Link to="/events" className="text-sm font-bold uppercase tracking-widest text-white/70 hover:text-white transition-colors relative group">
+              Événements
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 transition-all group-hover:w-full"></span>
+            </Link>
+            
+            {/* BOUTON PANIER */}
+            <Link to="/cart" className="relative group">
+              <div className={`p-3 rounded-full transition-colors ${cartItemCount > 0 ? 'bg-white/10 text-white' : 'hover:bg-white/10 text-white/70'}`}>
+                <ShoppingBag size={20} />
+              </div>
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-amber-400 to-rose-600 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full animate-bounce shadow-lg">
+                  {cartItemCount}
+                </span>
+              )}
+            </Link>
 
-          {user ? (
-            <div className="flex items-center gap-6 ml-4">
-              {/* BOUTON MON ESPACE (AGRANDI) */}
+            {/* BOUTONS AUTH */}
+            {user ? (
+              <div className="flex items-center gap-4 border-l border-white/10 pl-6">
+                <Link 
+                  to="/dashboard/user" 
+                  className="flex items-center gap-2 text-sm font-bold text-white hover:text-amber-300 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-br from-amber-300 to-rose-500 rounded-full p-[2px]">
+                    <div className="w-full h-full bg-[#1a0525] rounded-full flex items-center justify-center">
+                      <User size={14} />
+                    </div>
+                  </div>
+                  <span className="hidden lg:inline">Mon Compte</span>
+                </Link>
+                <button 
+                  onClick={handleLogout}
+                  className="p-2 text-white/50 hover:text-rose-400 transition-colors"
+                  title="Se déconnecter"
+                >
+                  <LogOut size={20} />
+                </button>
+              </div>
+            ) : (
               <Link 
-                to="/dashboard" 
-                className="flex items-center gap-3 px-6 py-3 bg-white/10 border border-white/20 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-amber-300 hover:text-[#1a0525] transition-all text-white group"
+                to="/auth/login"
+                className="px-6 py-2.5 bg-white text-[#1a0525] rounded-xl font-black uppercase text-xs tracking-widest hover:bg-amber-300 transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(251,191,36,0.4)] hover:scale-105 flex items-center gap-2"
               >
-                <LayoutDashboard size={18} className="group-hover:text-[#1a0525] text-amber-300" />
-                Mon Espace
+                <LogIn size={16} /> Connexion
               </Link>
-
-              <button 
-                onClick={handleLogout}
-                className="p-2 text-white/50 hover:text-rose-500 transition-colors"
-                title="Déconnexion"
-              >
-                <LogOut size={24} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-8 ml-4">
-              <Link to="/auth/login" className="text-sm font-black uppercase tracking-widest text-white hover:text-amber-300 transition-colors">
-                Connexion
-              </Link>
-              <Link to="/auth/register" className="px-8 py-4 bg-gradient-to-r from-amber-300 to-rose-500 text-[#1a0525] rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl">
-                S'inscrire
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* --- MOBILE CONTROLS --- */}
-        <div className="md:hidden flex items-center gap-6">
-          <Link to="/cart" className="relative p-2">
-            <ShoppingCart size={28} className="text-amber-300" />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-[11px] font-black text-white rounded-full flex items-center justify-center">
-                {itemCount}
-              </span>
             )}
-          </Link>
+          </div>
 
+          {/* --- BOUTON MOBILE --- */}
           <button 
-            className="text-white p-1" 
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="Toggle Menu"
+            onClick={() => setIsOpen(!isOpen)} 
+            className="md:hidden text-white p-2 z-50 hover:text-amber-300 transition-colors"
           >
-            {isOpen ? <X size={34} /> : <Menu size={34} />}
+            {isOpen ? <X size={32} /> : <Menu size={32} />}
           </button>
         </div>
       </div>
 
-      {/* --- MOBILE MENU OVERLAY (AGRANDI) --- */}
-      <div className={`md:hidden absolute top-full left-0 w-full bg-[#1a0525] border-b border-white/10 shadow-2xl transition-all duration-300 overflow-hidden ${
-        isOpen ? 'max-h-[600px] opacity-100 py-10' : 'max-h-0 opacity-0 py-0'
+      {/* --- MENU MOBILE (Full Screen Overlay) --- */}
+      <div className={`fixed inset-0 bg-[#1a0525] z-40 transition-all duration-500 flex flex-col justify-center px-8 ${
+        isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
       }`}>
-        <div className="container mx-auto px-8 flex flex-col gap-8">
-          <Link to="/" className="flex items-center gap-5 text-white hover:text-amber-300 font-black uppercase tracking-widest text-sm transition-colors">
-            <Home size={22} className="text-rose-500" /> Accueil
+        <div className="flex flex-col gap-8 items-center text-center">
+          <Link to="/" className="text-3xl font-black uppercase italic text-white hover:text-amber-300 transition-colors">
+            Accueil
+          </Link>
+          <Link to="/events" className="text-3xl font-black uppercase italic text-white hover:text-amber-300 transition-colors">
+            Événements
           </Link>
           
-          <Link to="/events" className="flex items-center gap-5 text-white hover:text-amber-300 font-black uppercase tracking-widest text-sm transition-colors">
-            <Calendar size={22} className="text-amber-400" /> Événements
+          <Link to="/cart" className="relative inline-block text-3xl font-black uppercase italic text-white hover:text-amber-300 transition-colors">
+            Panier
+            {cartItemCount > 0 && (
+              <span className="absolute -top-2 -right-6 bg-rose-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {cartItemCount}
+              </span>
+            )}
           </Link>
-          
-          <div className="h-[1px] bg-white/10 my-2"></div>
+
+          <div className="w-16 h-1 bg-white/10 rounded-full my-4" />
 
           {user ? (
-            <div className="flex flex-col gap-5">
-              <Link to="/dashboard" className="flex items-center justify-center gap-4 w-full py-5 bg-amber-300 text-[#1a0525] rounded-xl font-black uppercase tracking-widest text-sm">
-                <LayoutDashboard size={22} /> Mon Dashboard
+            <>
+              <Link to="/dashboard/user" className="flex items-center gap-3 text-xl font-bold text-amber-300 uppercase tracking-widest">
+                <LayoutDashboard size={24} /> Tableau de bord
               </Link>
-              <button onClick={handleLogout} className="flex items-center justify-center gap-4 w-full py-4 text-rose-500 font-black uppercase tracking-widest text-sm bg-rose-500/5 rounded-xl">
-                <LogOut size={22} /> Déconnexion
+              <button onClick={handleLogout} className="flex items-center gap-3 text-xl font-bold text-rose-400 uppercase tracking-widest mt-4">
+                <LogOut size={24} /> Déconnexion
               </button>
-            </div>
+            </>
           ) : (
-            <div className="grid grid-cols-1 gap-5">
-              <Link to="/auth/login" className="flex items-center justify-center py-5 rounded-xl border border-white/20 text-white font-black uppercase text-sm">
-                Connexion
-              </Link>
-              <Link to="/auth/register" className="flex items-center justify-center py-5 rounded-xl bg-gradient-to-r from-amber-300 to-rose-500 text-[#1a0525] font-black uppercase text-sm">
-                S'inscrire
-              </Link>
-            </div>
+            <Link 
+              to="/auth/login" 
+              className="w-full max-w-xs py-4 bg-white text-[#1a0525] rounded-2xl font-black uppercase tracking-widest text-center"
+            >
+              Connexion
+            </Link>
           )}
         </div>
       </div>

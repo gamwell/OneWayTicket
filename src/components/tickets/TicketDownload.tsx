@@ -1,6 +1,7 @@
-import React, { useRef } from "react";
-import { QRCodeSVG } from "qrcode.react";
-import { Download, CheckCircle } from "lucide-react";
+import React, { useRef, useState } from "react";
+// ✅ CORRECTION 1 : On utilise QRCodeCanvas au lieu de QRCodeSVG
+import { QRCodeCanvas } from "qrcode.react";
+import { Download, CheckCircle, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -14,37 +15,47 @@ interface TicketProps {
 
 const TicketDownload: React.FC<TicketProps> = ({ eventTitle, userName, ticketId, date, price }) => {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // --- LOGIQUE DE TÉLÉCHARGEMENT PDF ---
   const downloadTicket = async () => {
     const element = ticketRef.current;
     if (!element) return;
 
+    setIsGenerating(true);
+
     try {
       // 1. Capture du ticket en haute qualité
       const canvas = await html2canvas(element, {
-        scale: 2, // Améliore la résolution
+        scale: 3, // ✅ Qualité augmentée
         backgroundColor: "#ffffff",
+        useCORS: true, // ✅ Utile si vous ajoutez des images externes plus tard
+        logging: false, 
       });
 
       // 2. Création du PDF
       const imgData = canvas.toDataURL("image/png");
+      
+      // Orientation "p" (portrait), unité "mm", format "a4"
       const pdf = new jsPDF("p", "mm", "a4");
       
-      // Ajustement de la taille (A4 width = 210mm)
-      const pdfWidth = 210; 
+      const pdfWidth = 210; // Largeur A4 en mm
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`billet-${eventTitle}-${ticketId.slice(0, 5)}.pdf`);
+      pdf.addImage(imgData, "PNG", 0, 10, pdfWidth, pdfHeight); // 10mm de marge en haut
+      pdf.save(`billet-${eventTitle.replace(/\s+/g, '-')}-${ticketId.slice(0, 5)}.pdf`);
+
     } catch (error) {
-      console.error("Erreur téléchargement:", error);
+      console.error("❌ Erreur téléchargement:", error);
+      alert("Erreur lors de la génération du billet. Vérifiez la console.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   return (
     <div className="flex flex-col items-center gap-6 p-6">
-      {/* --- LE VISUEL DU BILLET (Ce qui sera téléchargé) --- */}
+      {/* --- LE VISUEL DU BILLET --- */}
       <div 
         ref={ticketRef} 
         className="w-full max-w-md bg-white text-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200"
@@ -73,12 +84,14 @@ const TicketDownload: React.FC<TicketProps> = ({ eventTitle, userName, ticketId,
                 <p className="text-xs text-slate-500 uppercase font-bold">Prix</p>
                 <p className="text-2xl font-black text-cyan-600">{price} €</p>
              </div>
-             {/* GÉNÉRATION DU QR CODE */}
+             
+             {/* ✅ CORRECTION 2 : Utilisation de QRCodeCanvas */}
              <div className="p-2 bg-white border-2 border-slate-900 rounded-lg">
-                <QRCodeSVG 
-                  value={ticketId} // C'est l'ID unique que le scanneur lira
+                <QRCodeCanvas 
+                  value={ticketId} 
                   size={80}
-                  level="H" // Haut niveau de correction d'erreur
+                  level="H"
+                  includeMargin={true} // Ajoute une petite marge blanche propre
                 />
              </div>
           </div>
@@ -88,7 +101,7 @@ const TicketDownload: React.FC<TicketProps> = ({ eventTitle, userName, ticketId,
           </div>
         </div>
 
-        {/* Pied de page ticket (découpe) */}
+        {/* Pied de page ticket */}
         <div className="bg-slate-100 p-4 border-t-2 border-dashed border-slate-300 flex justify-center items-center gap-2">
             <CheckCircle size={16} className="text-green-500" />
             <span className="text-xs font-bold text-slate-500 uppercase">Billet Valide</span>
@@ -98,9 +111,18 @@ const TicketDownload: React.FC<TicketProps> = ({ eventTitle, userName, ticketId,
       {/* --- BOUTON D'ACTION --- */}
       <button
         onClick={downloadTicket}
-        className="flex items-center gap-3 px-8 py-4 bg-pink-500 hover:bg-pink-400 text-white rounded-xl font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-pink-500/30 active:scale-95"
+        disabled={isGenerating}
+        className="flex items-center gap-3 px-8 py-4 bg-pink-500 hover:bg-pink-400 disabled:bg-slate-400 text-white rounded-xl font-bold uppercase tracking-widest transition-all shadow-lg hover:shadow-pink-500/30 active:scale-95"
       >
-        <Download size={20} /> Télécharger mon Billet
+        {isGenerating ? (
+            <>
+                <Loader2 size={20} className="animate-spin" /> Génération...
+            </>
+        ) : (
+            <>
+                <Download size={20} /> Télécharger mon Billet
+            </>
+        )}
       </button>
     </div>
   );

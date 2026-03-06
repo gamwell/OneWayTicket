@@ -1,151 +1,187 @@
-"use client"
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from "../supabaseClient";
+import { useAuth } from "./AuthContext";
 
-export interface CartItem {
+// --- TYPES ---
+export type CartItem = {
   id: string;
-  event_id: string;
+  stripe_price_id: string;
   title: string;
   price: number;
-  image_url: string;
-  date: string;
-  location: string;
+  image_url?: string;
+  date?: string;
+  location?: string;
   quantity: number;
-}
+};
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
-  removeFromCart: (id: string) => void;
-  clearCart: (shouldConfirm?: boolean) => void;
+  addToCart: (item: Omit<CartItem, "quantity">) => void;
+  removeFromCart: (itemId: string) => void;
+  clearCart: () => void;
   total: number;
-  itemCount: number;
-  isInCart: (id: string) => boolean;
+  count: number;
+  syncCartFromSupabase: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'onewayticket_cart_v2'; 
+const CART_STORAGE_KEY = "onewayticket_cart_v2";
 
+// =========================================================
+// HOOK PUBLIC
+// =========================================================
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error("useCart doit être utilisé à l'intérieur d'un CartProvider");
+  }
+  return context;
+};
+
+// =========================================================
+// PROVIDER
+// =========================================================
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  
-  // --- INITIALISATION BLINDÉE ---
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    if (typeof window === 'undefined') return [];
+  const { user } = useAuth();
+  const [cart, setCart] = useState<CartItem[]>([]);
 
-    // 👇 1. DÉTECTION INTELLIGENTE STRIPE
-    // On regarde si l'URL contient les traces d'un paiement Stripe
-    const params = new URLSearchParams(window.location.search);
-    const isStripeReturn = params.has('payment_intent') || 
-                           params.has('payment_intent_client_secret') ||
-                           params.has('redirect_status');
-
-    // 👇 2. DÉTECTION DE VOS MOTS CLÉS (Au cas où)
-    const path = window.location.pathname.toLowerCase();
-    const isSuccessPage = path.includes('success') || 
-                          path.includes('confirmation') || 
-                          path.includes('merci') ||
-                          path.includes('valide');
-
-    if (isStripeReturn || isSuccessPage) {
-      console.log("💳 Retour de paiement détecté : Panier forcé à VIDE.");
-      
-      // On nettoie tout immédiatement
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem('onewayticket_cart');
-      localStorage.removeItem('cart');
-      localStorage.removeItem('panier');
-      
-      return []; // On démarre vide !
-    }
-
-    // Sinon, on charge normalement
-    try {
-      const savedCart = localStorage.getItem(STORAGE_KEY);
-      if (savedCart) return JSON.parse(savedCart);
-    } catch (error) {
-      console.error("Erreur lecture panier:", error);
-    }
-    return [];
-  });
-
-  // Sauvegarde automatique
+  // --- CHARGEMENT INITIAL ---
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (cart.length === 0) {
-        // Si le panier est vide dans le state, on vide le stockage aussi
-        localStorage.removeItem(STORAGE_KEY);
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-      }
+    try {
+      const stored = localStorage.getItem(CART_STORAGE_KEY);
+      setCart(stored ? JSON.parse(stored) : []);
+    } catch {
+      setCart([]);
     }
+  }, []);
+
+  // --- SAUVEGARDE LOCALE ---
+  useEffect(() => {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = useCallback((item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
-    setCart((prevCart) => {
-      const exists = prevCart.some((i) => String(i.id) === String(item.id));
-      if (exists) return prevCart;
-      
-      const rawPrice = String(item.price).replace(/[^\d.-]/g, '');
-      const cleanPrice = parseFloat(rawPrice) || 0;
+  // --- SYNCHRONISATION SUPABASE ---
+  const syncCartFromSupabase = async () => {
+    if (!user) return;
 
-      const newItem: CartItem = { 
-        ...item, 
-        price: cleanPrice,
-        quantity: item.quantity || 1 
-      };
-      return [...prevCart, newItem];
+    const { data, error } = await supabase
+      .from("user_cart")
+      .select("cart")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[Cart] Erreur chargement Supabase:", error);
+      return;
+    }
+
+    if (data?.cart) {
+      setCart(data.cart);
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(data.cart));
+    }
+  };
+
+  const saveCartToSupabase = async (updatedCart: CartItem[]) => {
+    if (!user) return;
+
+    const { error } = await supabase.from("user_cart").upsert({
+      user_id: user.id,
+      cart: updatedCart,
+      updated_at: new Date().toISOString(),
     });
-  }, []);
 
-  const removeFromCart = useCallback((id: string) => {
-    setCart((prevCart) => prevCart.filter((item) => String(item.id) !== String(id)));
-  }, []);
+    if (error) console.error("[Cart] Erreur sauvegarde Supabase:", error);
+  };
 
-  const clearCart = useCallback((shouldConfirm: boolean = false) => {
-    const performClear = () => {
-      setCart([]); 
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+  // --- FUSION PANIER LOCAL + SUPABASE APRÈS LOGIN ---
+  useEffect(() => {
+    const mergeCarts = async () => {
+      if (!user) return;
+
+      const localCart = cart;
+
+      const { data } = await supabase
+        .from("user_cart")
+        .select("cart")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const remoteCart = data?.cart || [];
+
+      const merged = [...remoteCart];
+
+      localCart.forEach((localItem) => {
+        const existing = merged.find((i) => i.id === localItem.id);
+        if (existing) {
+          existing.quantity = Math.max(existing.quantity, localItem.quantity);
+        } else {
+          merged.push(localItem);
+        }
+      });
+
+      setCart(merged);
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(merged));
+      saveCartToSupabase(merged);
     };
 
-    if (shouldConfirm) {
-      if (window.confirm("Voulez-vous vraiment vider votre panier ?")) {
-        performClear();
-      }
-    } else {
-      performClear();
-    }
-  }, []);
+    mergeCarts();
+  }, [user]);
 
-  const isInCart = useCallback((id: string) => {
-    return cart.some((item) => String(item.id) === String(id));
-  }, [cart]);
+  // --- ACTIONS ---
+  const addToCart = (newItem: Omit<CartItem, "quantity">) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === newItem.id);
 
-  const total = useMemo(() => {
-    return cart.reduce((acc, item) => {
-      const p = Number(item.price) || 0;
-      const q = Number(item.quantity) || 1;
-      return acc + (p * q);
-    }, 0);
-  }, [cart]);
+      const updated = existing
+        ? prev.map((i) =>
+            i.id === newItem.id ? { ...i, quantity: i.quantity + 1 } : i
+          )
+        : [...prev, { ...newItem, quantity: 1 }];
 
-  const itemCount = useMemo(() => cart.length, [cart]);
+      saveCartToSupabase(updated);
+      return updated;
+    });
+  };
 
-  const value = useMemo(() => ({
-    cart, addToCart, removeFromCart, clearCart, total, itemCount, isInCart
-  }), [cart, addToCart, removeFromCart, clearCart, total, itemCount, isInCart]);
+  const removeFromCart = (itemId: string) => {
+    setCart((prev) => {
+      const updated = prev.filter((i) => i.id !== itemId);
+      saveCartToSupabase(updated);
+      return updated;
+    });
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    localStorage.removeItem(CART_STORAGE_KEY);
+    saveCartToSupabase([]);
+  };
+
+  // --- CALCULS ---
+  const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const count = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <CartContext.Provider value={value}>
+    <CartContext.Provider
+      value={{
+        cart,
+        addToCart,
+        removeFromCart,
+        clearCart,
+        total,
+        count,
+        syncCartFromSupabase,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
-};
-
-export const useCart = () => {
-  const context = useContext(CartContext);
-  if (!context) throw new Error('useCart doit être utilisé dans CartProvider');
-  return context;
 };

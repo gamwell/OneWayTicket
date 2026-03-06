@@ -1,49 +1,58 @@
-// Chemin: supabase/functions/stripe-webhook/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Stripe } from "https://esm.sh/stripe@14.21.0?target=deno";
 
-console.log("Fonction stripe-webhook démarrée")
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
+  apiVersion: '2023-10-16',
+  httpClient: Stripe.createFetchHttpClient(),
+});
+
+const endpointSecret = Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET');
 
 serve(async (req) => {
+  const signature = req.headers.get('stripe-signature');
+  if (!signature || !endpointSecret) return new Response('Signature manquante', { status: 400 });
+
+  const body = await req.text();
+  let event;
+
   try {
-    // 1. Récupération des secrets
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    // On utilise la clé admin qu'on a définie tout à l'heure
-    const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY')!
+    event = await stripe.webhooks.constructEventAsync(body, signature, endpointSecret);
+  } catch (err) {
+    return new Response(`Erreur de signature: ${err.message}`, { status: 400 });
+  }
 
-    // 2. Création du client Admin
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const { user_id, event_id, ticket_type_id } = session.metadata || {};
 
-    // 3. Récupérer les données envoyées par Stripe
-    const payload = await req.json()
-    
-    // Log pour voir ce que Stripe envoie (visible dans le dashboard Supabase)
-    console.log("Événement Stripe reçu :", payload.type)
-
-    // --- LOGIQUE METIER (Exemple: Sauvegarder l'event) ---
-    const { error } = await supabase
-      .from('audit_logs') 
-      .insert({ 
-        message: `Stripe Event: ${payload.type}`, 
-        details: payload 
-      })
-
-    if (error) {
-        console.error("Erreur insertion DB:", error)
-        throw error
+    if (!user_id || !event_id) {
+      return new Response('Métadonnées user_id ou event_id manquantes', { status: 400 });
     }
 
-    // 4. Réponse 200 OK (Important pour que Stripe sache que c'est reçu)
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { "Content-Type": "application/json" },
-      status: 200,
-    })
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-  } catch (error) {
-    // En cas d'erreur, on renvoie 400 pour que Stripe réessaie plus tard si besoin
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { "Content-Type": "application/json" },
-      status: 400,
-    })
+    // ✅ Insertion conforme à votre table "tickets"
+    const { error } = await supabaseAdmin
+      .from('tickets')
+      .insert({
+        user_id: user_id,
+        event_id: event_id,
+        ticket_type_id: ticket_type_id || null, // Utilise ticket_types si présent
+        status: 'valid',
+        payment_intent: session.payment_intent,
+        qr_code: crypto.randomUUID(), // Génère un UUID pour le scanneur
+        created_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('❌ Erreur Supabase:', error.message);
+      return new Response('Erreur insertion ticket', { status: 500 });
+    }
   }
-})
+
+  return new Response(JSON.stringify({ received: true }), { status: 200 });
+});

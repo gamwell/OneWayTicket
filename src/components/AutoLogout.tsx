@@ -1,61 +1,55 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, LogOut, AlertCircle, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Clock, LogOut, AlertCircle, ShieldCheck } from "lucide-react";
 
-// ✅ IMPORTATION CORRIGÉE : On utilise le client unique
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from "../supabaseClient";
+import { useAuth } from "../contexts/AuthContext";
 
-// Configuration (30 minutes)
-const LOGOUT_TIME = 30 * 60 * 1000;
-const WARNING_TIME = 25 * 60 * 1000; // Alerte à 25 min pour laisser 5 min de réaction
-const ACTIVITY_THROTTLE = 5000; // On ne reset pas plus d'une fois toutes les 5s
+// Config
+const LOGOUT_TIME = 30 * 60 * 1000; // 30 min
+const WARNING_TIME = 25 * 60 * 1000; // 25 min
+const ACTIVITY_THROTTLE = 5000; // 5 sec
 
-export const AutoLogout = () => {
+const AutoLogout = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth(); // Récupération de l'état global
+  const { user, logout } = useAuth();
+
   const [showWarning, setShowWarning] = useState(false);
-  
+
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  const hasMountedRef = useRef(false);
 
-  // 1. Fonction de déconnexion sécurisée
+  // ------------------------------------------------------------
+  // 🔥 Déconnexion sécurisée
+  // ------------------------------------------------------------
   const handleLogout = useCallback(async () => {
-    console.log("[Auth] Session expirée, déconnexion en cours...");
-    
     try {
-      // ✅ Déconnexion propre de Supabase
-      if (supabase) {
-        await supabase.auth.signOut();
-      }
-      
-      // ✅ Appel du logout de votre contexte pour nettoyer le profil
-      await logout();
-      
+      await logout(); // logout() fait déjà supabase.auth.signOut()
+
       setShowWarning(false);
-      
-      // Nettoyage forcé des résidus
+
       localStorage.clear();
       sessionStorage.clear();
-      
-      navigate('/auth/login', { replace: true });
-    } catch (err) {
-      console.error("[Auth] Erreur lors de l'auto-logout:", err);
-      // En cas d'échec serveur, on force au moins le nettoyage local
-      navigate('/auth/login');
-    }
-  }, [navigate, logout]);
 
-  // 2. Fonction de réinitialisation des timers
+      navigate("/auth/login", { replace: true });
+    } catch (err) {
+      console.error("[AutoLogout] Erreur:", err);
+      navigate("/auth/login");
+    }
+  }, [logout, navigate]);
+
+  // ------------------------------------------------------------
+  // 🔥 Réinitialisation des timers
+  // ------------------------------------------------------------
   const resetTimers = useCallback(() => {
-    // Si l'utilisateur n'est pas connecté, inutile de faire tourner les timers
     if (!user) return;
 
     const now = Date.now();
-    
-    // Optimisation : on ignore les micro-mouvements (économie de CPU)
+
+    // Anti-spam
     if (now - lastActivityRef.current < ACTIVITY_THROTTLE && !showWarning) {
       return;
     }
@@ -66,40 +60,52 @@ export const AutoLogout = () => {
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
 
-    // Relance des délais
-    warningTimerRef.current = setTimeout(() => setShowWarning(true), WARNING_TIME);
+    warningTimerRef.current = setTimeout(
+      () => setShowWarning(true),
+      WARNING_TIME
+    );
+
     logoutTimerRef.current = setTimeout(handleLogout, LOGOUT_TIME);
   }, [handleLogout, showWarning, user]);
 
-  // 3. Gestion des événements utilisateur
+  // ------------------------------------------------------------
+  // 🔥 Gestion des événements utilisateur
+  // ------------------------------------------------------------
   useEffect(() => {
-    // On ne surveille l'activité que si un utilisateur est loggé
     if (!user) return;
 
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    
+    // Empêche double exécution en React 18 StrictMode
+    if (hasMountedRef.current) return;
+    hasMountedRef.current = true;
+
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+
     resetTimers();
 
     const handleUserActivity = () => resetTimers();
 
-    events.forEach(event => {
-      window.addEventListener(event, handleUserActivity, { passive: true });
-    });
+    events.forEach((event) =>
+      window.addEventListener(event, handleUserActivity, { passive: true })
+    );
 
     return () => {
+      events.forEach((event) =>
+        window.removeEventListener(event, handleUserActivity)
+      );
+
       if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
       if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
-      events.forEach(event => {
-        window.removeEventListener(event, handleUserActivity);
-      });
     };
   }, [resetTimers, user]);
 
+  // ------------------------------------------------------------
+  // 🔥 UI
+  // ------------------------------------------------------------
   return (
     <AnimatePresence>
       {showWarning && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -109,26 +115,28 @@ export const AutoLogout = () => {
               <div className="relative">
                 <div className="absolute inset-0 bg-[#FF6B9D] blur-xl opacity-20 animate-pulse" />
                 <Clock className="w-14 h-14 text-[#FF6B9D] relative z-10" />
-                <motion.div 
+                <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                   className="absolute -inset-3 border-t-2 border-cyan-400 rounded-full opacity-40"
                 />
               </div>
             </div>
-            
+
             <h2 className="text-2xl font-black text-white mb-2 tracking-tighter uppercase italic">
               Alerte Sécurité
             </h2>
-            
+
             <div className="flex items-center justify-center gap-2 mb-4 py-1 px-3 bg-[#FF6B9D]/10 rounded-full w-fit mx-auto">
               <ShieldCheck className="w-4 h-4 text-[#FF6B9D]" />
-              <span className="text-[#FF6B9D] text-[10px] font-bold uppercase tracking-wider">Session expirante</span>
+              <span className="text-[#FF6B9D] text-[10px] font-bold uppercase tracking-wider">
+                Session expirante
+              </span>
             </div>
-            
+
             <p className="text-cyan-100/70 text-sm mb-8 leading-relaxed">
-              Votre session va expirer pour des raisons de sécurité. 
-              Souhaitez-vous <span className="text-white font-bold">prolonger</span> votre accès ?
+              Votre session va expirer pour des raisons de sécurité. Souhaitez-vous{" "}
+              <span className="text-white font-bold">prolonger</span> votre accès ?
             </p>
 
             <div className="space-y-3">
@@ -138,7 +146,7 @@ export const AutoLogout = () => {
               >
                 Prolonger l'accès
               </button>
-              
+
               <button
                 onClick={handleLogout}
                 className="w-full py-3 bg-transparent border border-white/10 text-white/40 font-semibold rounded-xl hover:bg-white/5 transition-all flex items-center justify-center gap-2 text-xs"
@@ -158,3 +166,5 @@ export const AutoLogout = () => {
     </AnimatePresence>
   );
 };
+
+export default AutoLogout;

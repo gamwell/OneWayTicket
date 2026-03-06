@@ -1,33 +1,32 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
 // Récupération via l'objet spécial de Vite
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // DIAGNOSTIC EN FONCTION DE L'ENVIRONNEMENT
 if (import.meta.env.DEV) {
-  // Seulement en développement
-  console.log("--- Supabase Init Diagnosis ---");
-  console.log("URL présente :", !!supabaseUrl);
-  console.log("Key présente :", !!supabaseAnonKey);
-  if (supabaseUrl) console.log("URL complète :", supabaseUrl);
-  
+  console.log("--- Supabase Init Diagnosis ---")
+  console.log("URL présente :", !!supabaseUrl)
+  console.log("Key présente :", !!supabaseAnonKey)
+  if (supabaseUrl) console.log("URL complète :", supabaseUrl)
+
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("❌ VARIABLES MANQUANTES :");
-    console.error("1. Créez un fichier .env.local à la racine");
-    console.error("2. Ajoutez :");
-    console.error("   VITE_SUPABASE_URL=votre_url");
-    console.error("   VITE_SUPABASE_ANON_KEY=votre_cle");
+    console.error("❌ VARIABLES MANQUANTES :")
+    console.error("1. Créez un fichier .env.local à la racine")
+    console.error("2. Ajoutez :")
+    console.error("   VITE_SUPABASE_URL=votre_url")
+    console.error("   VITE_SUPABASE_ANON_KEY=votre_cle")
   }
 }
 
-// Vérification en production aussi, mais sans console.error qui pourrait exposer des infos
+// Vérification en production aussi, mais sans console.error
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("⚠️ Variables Supabase non définies - l'authentification ne fonctionnera pas");
+  console.warn("⚠️ Variables Supabase non définies - l'authentification ne fonctionnera pas")
 }
 
 // Création du client avec gestion d'erreur améliorée
-let supabaseInstance = null;
+let supabaseInstance = null
 
 try {
   if (supabaseUrl && supabaseAnonKey) {
@@ -37,17 +36,38 @@ try {
         autoRefreshToken: true,
         detectSessionInUrl: true
       }
-    });
-    console.log("✅ Client Supabase initialisé avec succès");
+    })
+    console.log("✅ Client Supabase initialisé avec succès")
   }
 } catch (error) {
-  console.error("❌ Erreur lors de l'initialisation de Supabase:", error);
+  console.error("❌ Erreur lors de l'initialisation de Supabase:", error)
 }
 
-// Export avec fallback pour développement
-export const supabase = supabaseInstance;
+// Export du client
+export const supabase = supabaseInstance
 
 // Fonction utilitaire pour vérifier l'état
 export const isSupabaseConfigured = () => {
-  return !!supabaseInstance;
-};
+  return !!supabaseInstance
+}
+
+// Fonction Google Sign-In
+export async function signInWithGoogle() {
+  if (!supabase) {
+    console.error("❌ Supabase non configuré")
+    return null
+  }
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`
+    }
+  })
+
+  if (error) {
+    console.error('Erreur Google Auth:', error)
+  }
+
+  return data
+}

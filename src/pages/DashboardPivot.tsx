@@ -1,44 +1,40 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
-const DashboardPivot = () => {
+export default function DashboardPivot() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. On attend que le chargement du profil soit terminé
-    if (loading) return;
+    if (loading) return; // ⏳ On attend la fin du chargement
 
-    // 2. Si l'utilisateur n'est pas connecté, retour au login
     if (!user) {
-      navigate('/auth/login', { replace: true });
+      // ❌ Pas connecté → accueil
+      navigate("/", { replace: true });
       return;
     }
 
-    // 3. Logique de redirection selon le rôle
-    // On vérifie les deux possibilités (role ou is_admin) pour plus de sécurité
-    if (profile?.role === 'admin' || profile?.role === 'superadmin' || profile?.is_admin === true) {
-      console.log("🚀 Accès Admin détecté, redirection...");
-      navigate('/admin/dashboard', { replace: true });
+    // 🔐 Détection admin
+    const isAdmin =
+      profile?.role === "admin" ||
+      profile?.role === "superadmin" ||
+      profile?.is_admin === true;
+
+    if (isAdmin) {
+      // 🛠️ Admin → Dashboard Admin
+      navigate("/admin/dashboard", { replace: true });
     } else {
-      console.log("👤 Accès Client détecté, redirection...");
-      navigate('/dashboard/user', { replace: true });
+      // 👤 Utilisateur normal → Profil
+      navigate("/profile", { replace: true });
     }
-  }, [profile, loading, user, navigate]);
+  }, [user, profile, loading, navigate]);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center">
-      <div className="relative">
-        <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mb-4" />
-        <div className="absolute inset-0 blur-xl bg-cyan-500/20 animate-pulse"></div>
-      </div>
-      <p className="text-slate-400 font-black italic uppercase tracking-[0.3em] text-[10px] animate-pulse">
-        Analyse du profil en cours...
+    <div className="flex h-screen items-center justify-center bg-[#1a0525] text-white">
+      <p className="animate-pulse text-amber-300 tracking-widest text-xs uppercase">
+        Redirection vers votre espace...
       </p>
     </div>
   );
-};
-
-export default DashboardPivot;
+}

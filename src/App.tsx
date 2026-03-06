@@ -1,44 +1,54 @@
-import React, { lazy, Suspense, useEffect } from "react";
+import React, { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import { Loader2 } from "lucide-react"; 
+import { Loader2 } from "lucide-react";
 
 // --- CONTEXTES ---
-import { CartProvider } from "./contexts/CartContext"; 
+import { AuthProvider } from "./contexts/AuthContext";
+import { CartProvider } from "./contexts/CartContext";
 
-// --- CONFIGURATION ---
-import { supabase } from "./lib/supabase"; 
-
-// --- COMPOSANTS DE STRUCTURE ---
+// --- STRUCTURE ---
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import Hero from "./components/Hero/Hero"; // Vérifiez que le dossier est 'Hero' et le fichier 'Hero.tsx'
-import { ProtectedRoute } from "./components/ProtectedRoute"; 
-import { AdminRoute } from "./components/AdminRoute"; 
-import { PublicRoute } from "./components/PublicRoute";
-import { AutoLogout } from "./components/AutoLogout"; 
+import Hero from "./components/Hero/Hero";
+import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
+import PublicRoute from "./components/PublicRoute";
+import AutoLogout from "./components/AutoLogout";
 
 // --- PAGES (Lazy Loading) ---
 const HomePage           = lazy(() => import("./pages/HomePage"));
 const EventsPage         = lazy(() => import("./pages/EventsPage"));
-const EventDetailPage    = lazy(() => import("./pages/EventDetailPage")); 
+const EventDetailPage    = lazy(() => import("./pages/EventDetailPage"));
 const CartPage           = lazy(() => import("./pages/CartPage"));
 const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
 const ProfilePage        = lazy(() => import("./pages/ProfilePage"));
+const MyTicketsPage      = lazy(() => import("./pages/MyTicketsPage"));
+const TicketPage         = lazy(() => import("./pages/TicketPage"));
 
-// Auth
-const LoginPage          = lazy(() => import("./pages/auth/LoginPage")); 
-const Register           = lazy(() => import("./pages/auth/Register")); 
-const AuthCallback       = lazy(() => import("./pages/auth/Callback")); 
-const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword")); 
+// AUTH PUBLIC
+const LoginPage          = lazy(() => import("./pages/auth/LoginPage"));
+const Register           = lazy(() => import("./pages/auth/Register"));
+const AuthCallback       = lazy(() => import("./pages/auth/Callback"));
+const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword"));
 
-// Dashboards
+// DASHBOARDS
 const DashboardPivot     = lazy(() => import("./pages/DashboardPivot"));
-const DashboardPage      = lazy(() => import("./pages/DashboardPage"));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
 const NewEventPage       = lazy(() => import("./pages/admin/NewEventPage"));
 
-// ✅ DÉFINITION DU PAGELOADER (Résout votre erreur ReferenceError)
+// ADMIN
+const AdminLoginPage     = lazy(() => import("./pages/admin/AdminLoginPage"));
+const ScanPage           = lazy(() => import("./pages/admin/ScanPage"));
+const CheckinDashboard   = lazy(() => import("./pages/admin/CheckinDashboard"));
+const MobileScanPage     = lazy(() => import("./pages/admin/MobileScanPage"));
+const OfflineScanPage    = lazy(() => import("./pages/admin/OfflineScanPage"));
+const AdminToolsPage     = lazy(() => import("./pages/admin/AdminToolsPage"));
+const StaffHomePage      = lazy(() => import("./pages/admin/StaffHomePage"));
+
+// ✅ ConfirmationPage importé normalement pour éviter les délais de lazy loading au retour de Stripe
+import ConfirmationPage from "./components/ConfirmationPage";
+
 const PageLoader = () => (
   <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#1a0525] z-[9999]">
     <Loader2 className="animate-spin text-amber-300 w-16 h-16 mb-6" />
@@ -50,47 +60,56 @@ const PageLoader = () => (
 
 export default function App() {
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-[#1a0525] text-white flex flex-col font-sans selection:bg-rose-500/30">
-        <AutoLogout />
-        
-        <Suspense fallback={<PageLoader />}>
-          <Navbar />
-          <main className="flex-grow relative pt-20">
-            <Routes>
-              {/* --- ROUTE ACCUEIL --- */}
-              <Route path="/" element={
-                <>
-                  <Hero /> 
-                  <HomePage />
-                </>
-              } />
-              
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/events/:id" element={<EventDetailPage />} /> 
-              <Route path="/cart" element={<CartPage />} />
+    <AuthProvider>
+      <CartProvider>
+        <div className="min-h-screen bg-[#1a0525] text-white flex flex-col font-sans selection:bg-rose-500/30">
+          <AutoLogout />
+          <Suspense fallback={<PageLoader />}>
+            <Navbar />
+            <main className="flex-grow relative pt-20">
+              <Routes>
+                {/* --- PUBLIC --- */}
+                <Route path="/" element={<><Hero /><HomePage /></>} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/events/:id" element={<EventDetailPage />} />
+                <Route path="/cart" element={<CartPage />} />
 
-              {/* AUTH & PROTECTED ROUTES */}
-              <Route path="/auth/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-              <Route path="/auth/register" element={<PublicRoute><Register /></PublicRoute>} />
-              <Route path="/auth/forgot" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              
-              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-              <Route path="/success" element={<ProtectedRoute><SuccessPage /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardPivot /></ProtectedRoute>} />
-              <Route path="/dashboard/user" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-              
-              <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
-              <Route path="/admin/events/new" element={<AdminRoute><NewEventPage /></AdminRoute>} />
+                {/* --- AUTH --- */}
+                <Route path="/auth/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+                <Route path="/auth/register" element={<PublicRoute><Register /></PublicRoute>} />
+                <Route path="/auth/forgot" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-          <Footer />
-        </Suspense>
-        <SpeedInsights />
-      </div>
-    </CartProvider>
+                {/* --- PROTECTED (CLIENT) --- */}
+                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route path="/my-tickets" element={<ProtectedRoute><MyTicketsPage /></ProtectedRoute>} />
+                <Route path="/ticket/:id" element={<ProtectedRoute><TicketPage /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardPivot /></ProtectedRoute>} />
+                
+                {/* ✅ ROUTE DE CONFIRMATION (Retour Stripe) */}
+                <Route path="/confirmation" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
+                <Route path="/success" element={<ProtectedRoute><SuccessPage /></ProtectedRoute>} />
+
+                {/* --- ADMIN --- */}
+                <Route path="/admin/login" element={<PublicRoute><AdminLoginPage /></PublicRoute>} />
+                <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+                <Route path="/admin/events/new" element={<AdminRoute><NewEventPage /></AdminRoute>} />
+                <Route path="/admin/tools" element={<AdminRoute><AdminToolsPage /></AdminRoute>} />
+                <Route path="/admin/staff" element={<AdminRoute><StaffHomePage /></AdminRoute>} />
+                <Route path="/admin/scan" element={<AdminRoute><ScanPage /></AdminRoute>} />
+                <Route path="/admin/checkin-dashboard" element={<AdminRoute><CheckinDashboard /></AdminRoute>} />
+                <Route path="/admin/scan/mobile" element={<AdminRoute><MobileScanPage /></AdminRoute>} />
+                <Route path="/admin/scan/offline" element={<AdminRoute><OfflineScanPage /></AdminRoute>} />
+
+                {/* --- 404 --- */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
+            <Footer />
+          </Suspense>
+          <SpeedInsights />
+        </div>
+      </CartProvider>
+    </AuthProvider>
   );
 }
