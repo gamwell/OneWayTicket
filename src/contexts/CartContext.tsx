@@ -3,13 +3,13 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 
 import { supabase } from "../supabaseClient";
 import { useAuth } from "./AuthContext";
 
-// --- TYPES ---
 export type CartItem = {
   id: string;
   stripe_price_id: string;
@@ -32,26 +32,22 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
-
 const CART_STORAGE_KEY = "onewayticket_cart_v2";
 
-// =========================================================
-// HOOK PUBLIC
-// =========================================================
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error("useCart doit être utilisé à l'intérieur d'un CartProvider");
-  }
+  if (!context) throw new Error("useCart doit être utilisé à l'intérieur d'un CartProvider");
   return context;
 };
 
-// =========================================================
-// PROVIDER
-// =========================================================
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
+  
+  // 🔥 Flag pour bloquer la fusion après clearCart
+  const justCleared = useRef(false);
+  // Flag pour éviter la fusion au premier montage si déjà fait
+  const hasMerged = useRef(false);
 
   // --- CHARGEMENT INITIAL ---
   useEffect(() => {
@@ -71,7 +67,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   // --- SYNCHRONISATION SUPABASE ---
   const syncCartFromSupabase = async () => {
     if (!user) return;
-
     const { data, error } = await supabase
       .from("user_cart")
       .select("cart")
@@ -91,13 +86,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const saveCartToSupabase = async (updatedCart: CartItem[]) => {
     if (!user) return;
-
     const { error } = await supabase.from("user_cart").upsert({
       user_id: user.id,
       cart: updatedCart,
       updated_at: new Date().toISOString(),
     });
-
     if (error) console.error("[Cart] Erreur sauvegarde Supabase:", error);
   };
 
@@ -106,8 +99,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const mergeCarts = async () => {
       if (!user) return;
 
-      const localCart = cart;
+      // 🔥 Si on vient de vider le panier, on ne fusionne pas
+      if (justCleared.current) {
+        justCleared.current = false;
+        return;
+      }
 
+      // 🔥 Ne fusionner qu'une seule fois par session
+      if (hasMerged.current) return;
+      hasMerged.current = true;
+
+      const localCart = cart;
       const { data } = await supabase
         .from("user_cart")
         .select("cart")
@@ -116,8 +118,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       const remoteCart = data?.cart || [];
 
-      const merged = [...remoteCart];
+      // Si le panier distant est vide, ne pas écraser
+      if (remoteCart.length === 0 && localCart.length === 0) return;
 
+      const merged = [...remoteCart];
       localCart.forEach((localItem) => {
         const existing = merged.find((i) => i.id === localItem.id);
         if (existing) {
@@ -139,13 +143,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const addToCart = (newItem: Omit<CartItem, "quantity">) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === newItem.id);
-
       const updated = existing
-        ? prev.map((i) =>
-            i.id === newItem.id ? { ...i, quantity: i.quantity + 1 } : i
-          )
+        ? prev.map((i) => i.id === newItem.id ? { ...i, quantity: i.quantity + 1 } : i)
         : [...prev, { ...newItem, quantity: 1 }];
-
       saveCartToSupabase(updated);
       return updated;
     });
@@ -160,26 +160,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearCart = () => {
+    // 🔥 Marquer que le panier vient d'être vidé
+    justCleared.current = true;
+    hasMerged.current = false;
     setCart([]);
     localStorage.removeItem(CART_STORAGE_KEY);
     saveCartToSupabase([]);
   };
 
-  // --- CALCULS ---
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const count = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
     <CartContext.Provider
-      value={{
-        cart,
-        addToCart,
-        removeFromCart,
-        clearCart,
-        total,
-        count,
-        syncCartFromSupabase,
-      }}
+      value={{ cart, addToCart, removeFromCart, clearCart, total, count, syncCartFromSupabase }}
     >
       {children}
     </CartContext.Provider>
