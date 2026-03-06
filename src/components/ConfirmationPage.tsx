@@ -3,14 +3,21 @@ import QRCode from "react-qr-code";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient"; 
 import { useAuth } from "../contexts/AuthContext";
+import { useCart } from "../contexts/CartContext";
 import { Loader2, CheckCircle, Ticket as TicketIcon } from "lucide-react";
 
 export default function ConfirmationPage() {
   const { user } = useAuth();
+  const { clearCart } = useCart();
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+
+  // 🔥 Vider le panier dès l'arrivée sur cette page
+  useEffect(() => {
+    clearCart();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -18,7 +25,6 @@ export default function ConfirmationPage() {
 
     const fetchTicket = async () => {
       try {
-        // ✅ Requête jointe sur events et ticket_types (vu dans votre base)
         const { data, error: dbError } = await supabase
           .from("tickets")
           .select(`
@@ -34,7 +40,7 @@ export default function ConfirmationPage() {
         if (dbError) throw dbError;
 
         if (!data) {
-          if (retryCount < 12) { // On tente pendant 24 secondes max
+          if (retryCount < 12) {
             setTimeout(() => setRetryCount(prev => prev + 1), 2000);
           } else {
             setError("Billet introuvable. Vérifiez votre historique dans quelques minutes.");
