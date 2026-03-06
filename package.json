@@ -62,7 +62,7 @@
     "eslint": "^9.39.2",
     "postcss": "^8.5.6",
     "prettier": "^3.7.4",
-    "supabase": "^2.72.7",
+    "supabase": "^2.76.17",
     "tailwindcss": "^4.1.18",
     "terser": "^5.44.1",
     "tsx": "^4.21.0",
