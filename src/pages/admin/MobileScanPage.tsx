@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { supabase } from "../../lib/supabase"; // ✅ Correction du chemin
-import { QrReader } from "react-qr-reader";
+import { supabase } from "../../lib/supabase";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -26,6 +26,30 @@ export default function MobileScanPage() {
   const ticketCache = useRef<Record<string, any>>({});
 
   // ------------------------------------------------------------
+  // 🔥 INITIALISATION DU SCANNER html5-qrcode
+  // ------------------------------------------------------------
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader-mobile",
+      {
+        fps: 10,
+        qrbox: 250,
+        aspectRatio: 1.0,
+      },
+      false
+    );
+
+    scanner.render(
+      (result) => handleScan(result),
+      (error) => console.warn("QR scan error:", error)
+    );
+
+    return () => {
+      scanner.clear().catch(console.error);
+    };
+  }, []);
+
+  // ------------------------------------------------------------
   // 🔥 Synchronisation entre scanners (INSERT scan_logs)
   // ------------------------------------------------------------
   useEffect(() => {
@@ -36,9 +60,7 @@ export default function MobileScanPage() {
         { event: "INSERT", schema: "public", table: "scan_logs" },
         (payload) => {
           const scannedTicket = payload.new.ticket_id;
-
           if (scannedTicket === lastTicketId) return;
-
           if (ticketCache.current[scannedTicket]) {
             ticketCache.current[scannedTicket].checked_in = true;
           }
@@ -154,18 +176,14 @@ export default function MobileScanPage() {
   const triggerValid = (msg: string) => {
     setStatus("valid");
     setMessage(msg);
-    try {
-      soundValid.current.play().catch(() => {});
-    } catch {}
+    try { soundValid.current.play().catch(() => {}); } catch {}
     navigator.vibrate?.(200);
   };
 
   const triggerInvalid = (msg: string) => {
     setStatus("invalid");
     setMessage(msg);
-    try {
-      soundInvalid.current.play().catch(() => {});
-    } catch {}
+    try { soundInvalid.current.play().catch(() => {}); } catch {}
     navigator.vibrate?.([100, 50, 100]);
   };
 
@@ -181,9 +199,7 @@ export default function MobileScanPage() {
   // 🔥 UI
   // ------------------------------------------------------------
   return (
-    <div
-      className={`min-h-screen ${bgColor} text-white flex flex-col transition-colors duration-300`}
-    >
+    <div className={`min-h-screen ${bgColor} text-white flex flex-col transition-colors duration-300`}>
       {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-white/10 bg-black/20 backdrop-blur-sm fixed top-0 w-full z-10">
         <button
@@ -192,30 +208,20 @@ export default function MobileScanPage() {
         >
           <ArrowLeft size={20} />
         </button>
-
         <div className="text-center">
           <h1 className="font-bold tracking-wide">Scanner Mobile</h1>
         </div>
-
         <div className="w-10"></div>
       </div>
 
       {/* Contenu */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 pt-20 pb-6 gap-6">
+
         {/* Zone Caméra */}
         <div className="w-full max-w-sm aspect-square relative rounded-3xl overflow-hidden border-4 border-white/20 shadow-2xl bg-black">
-          <QrReader
-            onResult={(result) => {
-              if (result) {
-                // @ts-ignore
-                const text = result?.getText?.() || result?.text;
-                handleScan(text);
-              }
-            }}
-            constraints={{ facingMode: "environment" }}
-            className="w-full h-full object-cover"
-            videoStyle={{ objectFit: "cover" }}
-          />
+
+          {/* Scanner html5-qrcode */}
+          <div id="qr-reader-mobile" style={{ width: "100%", height: "100%" }} />
 
           {/* Viseur */}
           <div className="absolute inset-0 border-[30px] border-black/50 pointer-events-none flex items-center justify-center">
@@ -231,7 +237,6 @@ export default function MobileScanPage() {
         {/* Message */}
         <div className="text-center bg-black/30 p-6 rounded-2xl backdrop-blur-md w-full max-w-sm">
           <p className="text-2xl font-bold mb-2 animate-pulse">{message}</p>
-
           {lastTicketId && (
             <p className="text-sm text-white/70 font-mono bg-black/40 py-1 px-3 rounded-full inline-block">
               ID: {lastTicketId.slice(0, 8)}...
