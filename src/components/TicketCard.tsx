@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import jsPDF from "jspdf";
+import { Trash2, Loader2 } from "lucide-react";
+import { supabase } from "../supabaseClient";
 
 interface TicketCardProps {
   ticket: {
@@ -13,9 +15,12 @@ interface TicketCardProps {
       location?: string;
     };
   };
+  onDelete?: (ticketId: string) => void;
 }
 
-export default function TicketCard({ ticket }: TicketCardProps) {
+export default function TicketCard({ ticket, onDelete }: TicketCardProps) {
+  const [deleting, setDeleting] = useState(false);
+
   const eventTitle = ticket.event?.title || "Événement inconnu";
   const eventDate = ticket.event?.date
     ? new Date(ticket.event.date).toLocaleDateString("fr-FR", {
@@ -26,27 +31,56 @@ export default function TicketCard({ ticket }: TicketCardProps) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticket.qr_code || ticket.id}`;
 
   // ------------------------------------------------------------
+  // 🔥 SUPPRESSION
+  // ------------------------------------------------------------
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Empêche la navigation si dans un <Link>
+    e.stopPropagation();
+
+    const confirmed = window.confirm(
+      "Supprimer ce billet ? Cette action est irréversible."
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("tickets")
+        .delete()
+        .eq("id", ticket.id);
+
+      if (error) throw error;
+
+      onDelete?.(ticket.id); // Notifie le parent pour retirer la carte
+    } catch (err) {
+      console.error("Erreur suppression:", err);
+      alert("Impossible de supprimer ce billet.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ------------------------------------------------------------
   // 🔥 TÉLÉCHARGEMENT PDF
   // ------------------------------------------------------------
-  const downloadPDF = async () => {
+  const downloadPDF = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-    // Fond sombre
     doc.setFillColor(20, 10, 40);
     doc.rect(0, 0, 210, 297, "F");
 
-    // Titre
     doc.setTextColor(255, 180, 0);
     doc.setFontSize(28);
     doc.setFont("helvetica", "bold");
     doc.text("ONEWAYTICKET", 105, 30, { align: "center" });
 
-    // Nom de l'événement
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.text(eventTitle, 105, 50, { align: "center" });
 
-    // Date et lieu
     doc.setFontSize(13);
     doc.setTextColor(200, 200, 200);
     doc.text(`📅 ${eventDate}`, 105, 65, { align: "center" });
@@ -54,12 +88,10 @@ export default function TicketCard({ ticket }: TicketCardProps) {
       doc.text(`📍 ${eventLocation}`, 105, 75, { align: "center" });
     }
 
-    // Ligne de séparation
     doc.setDrawColor(255, 180, 0);
     doc.setLineWidth(0.5);
     doc.line(30, 85, 180, 85);
 
-    // QR Code (image depuis l'API)
     try {
       const img = await loadImage(qrUrl);
       doc.addImage(img, "PNG", 65, 95, 80, 80);
@@ -68,17 +100,14 @@ export default function TicketCard({ ticket }: TicketCardProps) {
       doc.text("QR Code indisponible", 105, 135, { align: "center" });
     }
 
-    // ID du billet
     doc.setTextColor(150, 150, 150);
     doc.setFontSize(9);
     doc.text(`ID : ${ticket.id}`, 105, 185, { align: "center" });
 
-    // Instructions
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(11);
     doc.text("Présentez ce QR code à l'entrée de l'événement.", 105, 200, { align: "center" });
 
-    // Pied de page
     doc.setTextColor(100, 100, 100);
     doc.setFontSize(8);
     doc.text("quarksydigital.com — Billet non remboursable", 105, 285, { align: "center" });
@@ -86,7 +115,6 @@ export default function TicketCard({ ticket }: TicketCardProps) {
     doc.save(`billet-${eventTitle.replace(/\s+/g, "-")}-${ticket.id.slice(0, 8)}.pdf`);
   };
 
-  // Helper pour charger l'image en base64
   const loadImage = (url: string): Promise<string> =>
     new Promise((resolve, reject) => {
       const img = new Image();
@@ -134,9 +162,23 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         {/* Bouton PDF */}
         <button
           onClick={downloadPDF}
-          className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2 px-4 rounded-lg transition-colors"
+          className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2 px-4 rounded-lg transition-colors mb-3"
         >
           ⬇ Télécharger le billet (PDF)
+        </button>
+
+        {/* 🔥 Bouton Supprimer */}
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="w-full flex items-center justify-center gap-2 bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {deleting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
+          {deleting ? "Suppression..." : "Supprimer ce billet"}
         </button>
       </div>
     </div>
