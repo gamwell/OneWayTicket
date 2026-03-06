@@ -49,8 +49,8 @@ serve(async (req) => {
           },
         },
       ],
-      // ✅ Redirection vers la route exacte définie dans App.tsx
-      success_url: `${baseUrl}/confirmation`,
+      // ✅ session_id ajouté pour vider le panier après paiement
+      success_url: `${baseUrl}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/cart`,
       
       metadata: {

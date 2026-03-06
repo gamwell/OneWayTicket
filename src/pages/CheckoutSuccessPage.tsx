@@ -10,10 +10,10 @@ const CheckoutSuccessPage = () => {
   const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
-    if (sessionId) {
-      clearCart();
-    }
-  }, [sessionId, clearCart]);
+    // 🔥 Vider le panier dès l'arrivée sur cette page
+    // que session_id soit présent ou non
+    clearCart();
+  }, []); // ← ne dépend plus de sessionId
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -29,6 +29,11 @@ const CheckoutSuccessPage = () => {
             <p className="text-white/90 text-lg">
               Votre commande a été confirmée
             </p>
+            {sessionId && (
+              <p className="text-white/60 text-xs mt-2">
+                Référence : {sessionId.slice(0, 20)}...
+              </p>
+            )}
           </div>
 
           <div className="p-8">
