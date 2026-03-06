@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, ShoppingBag, User, LogOut, 
-  LayoutDashboard, ShieldCheck, LogIn 
+  LayoutDashboard, ShieldCheck, LogIn, Settings 
 } from 'lucide-react';
 
 // ✅ IMPORT DES CONTEXTES
@@ -11,16 +11,15 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false); // Pour l'effet de scroll
+  const [scrolled, setScrolled] = useState(false); 
   
   const navigate = useNavigate();
   const location = useLocation();
   
-  // ✅ Récupération sécurisée
+  // ✅ Correction : On récupère aussi 'profile' pour checker 'is_admin'
   const { cart } = useCart();
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth(); 
 
-  // ✅ Gestion du scroll pour l'effet visuel
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -29,12 +28,10 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ✅ Fermer le menu mobile quand on change de page
   useEffect(() => {
     setIsOpen(false);
   }, [location]);
 
-  // ✅ CALCUL DU NOMBRE D'ARTICLES
   const cartItemCount = cart 
     ? cart.reduce((total, item) => total + (item.quantity || 1), 0)
     : 0;
@@ -70,7 +67,6 @@ const Navbar = () => {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-amber-400 transition-all group-hover:w-full"></span>
             </Link>
             
-            {/* BOUTON PANIER */}
             <Link to="/cart" className="relative group">
               <div className={`p-3 rounded-full transition-colors ${cartItemCount > 0 ? 'bg-white/10 text-white' : 'hover:bg-white/10 text-white/70'}`}>
                 <ShoppingBag size={20} />
@@ -85,6 +81,18 @@ const Navbar = () => {
             {/* BOUTONS AUTH */}
             {user ? (
               <div className="flex items-center gap-4 border-l border-white/10 pl-6">
+                
+                {/* ✅ BOUTON ADMIN (Visible uniquement si is_admin est true) */}
+                {profile?.is_admin && (
+                  <Link 
+                    to="/admin" 
+                    className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 hover:bg-amber-500/20 transition-all text-xs font-black uppercase tracking-tighter"
+                  >
+                    <Settings size={14} className="animate-spin-slow" />
+                    Admin
+                  </Link>
+                )}
+
                 <Link 
                   to="/dashboard/user" 
                   className="flex items-center gap-2 text-sm font-bold text-white hover:text-amber-300 transition-colors"
@@ -124,43 +132,34 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* --- MENU MOBILE (Full Screen Overlay) --- */}
+      {/* --- MENU MOBILE --- */}
       <div className={`fixed inset-0 bg-[#1a0525] z-40 transition-all duration-500 flex flex-col justify-center px-8 ${
         isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
       }`}>
         <div className="flex flex-col gap-8 items-center text-center">
-          <Link to="/" className="text-3xl font-black uppercase italic text-white hover:text-amber-300 transition-colors">
-            Accueil
-          </Link>
-          <Link to="/events" className="text-3xl font-black uppercase italic text-white hover:text-amber-300 transition-colors">
-            Événements
-          </Link>
+          <Link to="/" className="text-3xl font-black uppercase italic text-white">Accueil</Link>
+          <Link to="/events" className="text-3xl font-black uppercase italic text-white">Événements</Link>
           
-          <Link to="/cart" className="relative inline-block text-3xl font-black uppercase italic text-white hover:text-amber-300 transition-colors">
-            Panier
-            {cartItemCount > 0 && (
-              <span className="absolute -top-2 -right-6 bg-rose-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {cartItemCount}
-              </span>
-            )}
-          </Link>
+          {/* ✅ Dashboard Admin en Mobile */}
+          {profile?.is_admin && (
+            <Link to="/admin" className="text-2xl font-black uppercase text-amber-400 flex items-center gap-2">
+              <Settings size={24} /> Administration
+            </Link>
+          )}
 
           <div className="w-16 h-1 bg-white/10 rounded-full my-4" />
 
           {user ? (
             <>
-              <Link to="/dashboard/user" className="flex items-center gap-3 text-xl font-bold text-amber-300 uppercase tracking-widest">
-                <LayoutDashboard size={24} /> Tableau de bord
+              <Link to="/dashboard/user" className="flex items-center gap-3 text-xl font-bold text-white uppercase tracking-widest">
+                <LayoutDashboard size={24} /> Mon Compte
               </Link>
               <button onClick={handleLogout} className="flex items-center gap-3 text-xl font-bold text-rose-400 uppercase tracking-widest mt-4">
                 <LogOut size={24} /> Déconnexion
               </button>
             </>
           ) : (
-            <Link 
-              to="/auth/login" 
-              className="w-full max-w-xs py-4 bg-white text-[#1a0525] rounded-2xl font-black uppercase tracking-widest text-center"
-            >
+            <Link to="/auth/login" className="w-full max-w-xs py-4 bg-white text-[#1a0525] rounded-2xl font-black uppercase">
               Connexion
             </Link>
           )}
