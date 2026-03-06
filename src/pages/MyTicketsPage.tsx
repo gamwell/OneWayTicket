@@ -54,10 +54,15 @@ export default function MyTicketsPage() {
     fetchTickets();
   }, [user]);
 
+  // 🔥 Supprime le billet de la liste sans recharger la page
+  const handleDeleteTicket = (ticketId: string) => {
+    setTickets((prev) => prev.filter((t) => t.id !== ticketId));
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen text-xl">
-        Chargement de vos billets…
+        Chargement de vos billets...
       </div>
     );
   }
@@ -90,7 +95,11 @@ export default function MyTicketsPage() {
       <h1 className="text-3xl font-bold mb-8">Mes billets</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {tickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
+          <TicketCard
+            key={ticket.id}
+            ticket={ticket}
+            onDelete={handleDeleteTicket}
+          />
         ))}
       </div>
     </div>
