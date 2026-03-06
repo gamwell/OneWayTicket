@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-
-// ✅ CORRECTION 1 : Le bon chemin vers votre fichier client
 import { supabase } from '../supabaseClient';
 
 // --- TYPES ---
@@ -9,8 +7,10 @@ export type UserProfile = {
   id: string;
   email: string | null;
   full_name: string | null;
-  role: "superadmin" | "admin" | "client" | "user";
-  is_admin?: boolean;
+  // ✅ Ajout de toutes les valeurs possibles de la colonne "rôle" en DB
+  role: "superadmin" | "admin" | "administrateur" | "client" | "user" | "utilisateur";
+  is_admin?: boolean;   // colonne JS (pour compatibilité)
+  est_admin?: boolean;  // ✅ colonne réelle en DB
 };
 
 interface AuthState {
@@ -20,16 +20,15 @@ interface AuthState {
   error: string | null;
 }
 
-// ✅ CORRECTION 2 : Ajout des signatures pour signIn et signUp
 interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>; // Renommé pour standardiser
+  signInWithGoogle: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   signIn: (e: string, p: string) => Promise<{ error: AuthError | null }>;
   signUp: (e: string, p: string, n: string) => Promise<{ error: AuthError | null }>;
 }
 
-// --- CONFIGURATION DU CACHE ---
+// --- CACHE ---
 const profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
 const CACHE_DURATION = 30000;
 
@@ -43,7 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error: null,
   });
 
-  // --- RÉCUPÉRATION DU PROFIL (Votre logique conservée) ---
+  // --- RÉCUPÉRATION DU PROFIL ---
   const fetchProfile = useCallback(async (userId: string, force = false): Promise<UserProfile | null> => {
     if (!userId) return null;
 
@@ -57,19 +56,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       if (!supabase) throw new Error("Supabase client non disponible");
 
+      // ✅ Correction : vrai nom de la table en DB
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from("profils d'utilisateurs")
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
       if (error) console.warn("[Auth] Problème profil:", error.message);
 
-      const profileData = data as UserProfile;
-      if (profileData) {
+      if (data) {
+        // ✅ Normalisation : mappe est_admin → is_admin pour compatibilité avec ProtectedRoute
+        const profileData: UserProfile = {
+          ...data,
+          is_admin: data.est_admin ?? data.is_admin ?? false,
+          role: data.rôle ?? data.role ?? "user",
+        };
         profileCache.set(userId, { data: profileData, timestamp: Date.now() });
+        return profileData;
       }
-      return profileData;
+
+      return null;
     } catch (err: any) {
       console.error('[Auth] Erreur critique profil:', err.message);
       return null;
@@ -79,15 +86,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateAuthState = useCallback(async (session: Session | null) => {
     const user = session?.user ?? null;
     let profile: UserProfile | null = null;
-
     if (user) profile = await fetchProfile(user.id);
-
-    setState({
-      user,
-      profile,
-      loading: false,
-      error: null,
-    });
+    setState({ user, profile, loading: false, error: null });
   }, [fetchProfile]);
 
   // --- GESTION SESSION ---
@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [updateAuthState]);
 
-  // --- ACTIONS (CORRIGÉES ET COMPLÉTÉES) ---
+  // --- ACTIONS ---
 
   const logout = async () => {
     try {
@@ -136,7 +136,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // ✅ Renommé en signInWithGoogle pour matcher votre frontend
   const signInWithGoogle = async () => {
     if (!supabase) return;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -149,31 +148,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
-  // ✅ AJOUT : Fonction SignIn (Email/Password)
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   };
 
-  // ✅ AJOUT : Fonction SignUp (Email/Password + Edge Function)
   const signUp = async (email: string, password: string, fullName: string) => {
-    // 1. Inscription
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName } },
     });
 
-    // 2. Trigger Edge Function (Email de bienvenue)
     if (!error && data?.user) {
       supabase.functions.invoke('send-welcome-email', {
-        body: {
-          record: {
-            email: email,
-            first_name: fullName,
-            profile_type: "standard"
-          }
-        }
+        body: { record: { email, first_name: fullName, profile_type: "standard" } }
       }).then(({ error: funcError }) => {
         if (funcError) console.warn("⚠️ Email warning:", funcError);
       });
@@ -190,13 +179,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      ...state, 
-      logout, 
-      signInWithGoogle, 
+    <AuthContext.Provider value={{
+      ...state,
+      logout,
+      signInWithGoogle,
       refreshProfile,
-      signIn, // ✅ Exporté
-      signUp  // ✅ Exporté
+      signIn,
+      signUp,
     }}>
       {children}
     </AuthContext.Provider>
