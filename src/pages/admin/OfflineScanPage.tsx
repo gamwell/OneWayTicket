@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "../../lib/supabase"; // ✅ Correction du chemin
-import { QrReader } from "react-qr-reader";
+import { supabase } from "../../lib/supabase";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { useAuth } from "../../contexts/AuthContext";
 
 const OFFLINE_QUEUE_KEY = "onewayticket_offline_scans";
@@ -29,6 +29,26 @@ export default function OfflineScanPage() {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // ------------------------------------------------------------
+  // 🔥 INITIALISATION DU SCANNER html5-qrcode
+  // ------------------------------------------------------------
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader-offline",
+      { fps: 10, qrbox: 250 },
+      false
+    );
+
+    scanner.render(
+      (result) => handleScan(result),
+      (error) => console.warn("QR scan error:", error)
+    );
+
+    return () => {
+      scanner.clear().catch(console.error);
     };
   }, []);
 
@@ -85,7 +105,6 @@ export default function OfflineScanPage() {
 
     try {
       for (const id of queue) {
-        // 1. Marquer comme validé
         const { error: updateErr } = await supabase
           .from("tickets")
           .update({ checked_in: true })
@@ -93,7 +112,6 @@ export default function OfflineScanPage() {
 
         if (updateErr) throw updateErr;
 
-        // 2. Log pour les autres scanners
         const { error: logErr } = await supabase.from("scan_logs").insert({
           ticket_id: id,
           scanned_by: user?.id || null,
@@ -119,27 +137,22 @@ export default function OfflineScanPage() {
     <div className="min-h-screen bg-slate-900 text-white flex flex-col">
       <div className="p-4 text-center border-b border-white/10">
         <h1 className="text-xl font-bold">Mode Scan Hors‑ligne</h1>
-
         <p className="text-xs mt-1">
           Statut réseau :{" "}
           <span className={isOnline ? "text-green-400" : "text-red-400"}>
             {isOnline ? "En ligne" : "Hors‑ligne"}
           </span>
         </p>
-
         <p className="text-[10px] text-white/60 mt-1">
           Les billets scannés sont enregistrés localement et synchronisés plus tard.
         </p>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-6">
+
+        {/* Scanner html5-qrcode */}
         <div className="w-full max-w-xs rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg">
-          <QrReader
-            onResult={(result) => handleScan(result?.getText() || null)}
-            constraints={{ facingMode: "environment" }}
-            containerStyle={{ width: "100%" }}
-            videoStyle={{ width: "100%", height: "auto" }}
-          />
+          <div id="qr-reader-offline" style={{ width: "100%" }} />
         </div>
 
         <div className="text-center">
