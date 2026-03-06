@@ -7,10 +7,8 @@ export type UserProfile = {
   id: string;
   email: string | null;
   full_name: string | null;
-  // ✅ Ajout de toutes les valeurs possibles de la colonne "rôle" en DB
   role: "superadmin" | "admin" | "administrateur" | "client" | "user" | "utilisateur";
-  is_admin?: boolean;   // colonne JS (pour compatibilité)
-  est_admin?: boolean;  // ✅ colonne réelle en DB
+  is_admin: boolean; // Colonne principale utilisée par l'app
 };
 
 interface AuthState {
@@ -56,22 +54,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       if (!supabase) throw new Error("Supabase client non disponible");
 
-      // ✅ Correction : vrai nom de la table en DB
+      // ✅ Correction : Utilisation du nom technique "user_profiles" 
+      // car "profils d'utilisateurs" n'est pas reconnu par le moteur SQL
       const { data, error } = await supabase
-        .from("profils d'utilisateurs")
+        .from("user_profiles")
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) console.warn("[Auth] Problème profil:", error.message);
+      if (error) {
+        console.error("[Auth] Erreur lors de la récupération du profil:", error.message);
+        return null;
+      }
 
       if (data) {
-        // ✅ Normalisation : mappe est_admin → is_admin pour compatibilité avec ProtectedRoute
+        // ✅ Correction : Mapping basé sur votre JSON réel (is_admin et role sans accents)
         const profileData: UserProfile = {
-          ...data,
-          is_admin: data.est_admin ?? data.is_admin ?? false,
-          role: data.rôle ?? data.role ?? "user",
+          id: data.id,
+          email: data.email,
+          full_name: data.full_name || data.prenom || null,
+          is_admin: data.is_admin === true || data.est_admin === true,
+          role: data.role || data.rôle || "user",
         };
+
+        console.log("[Auth] Profil normalisé avec succès:", profileData);
         profileCache.set(userId, { data: profileData, timestamp: Date.now() });
         return profileData;
       }
@@ -86,7 +92,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateAuthState = useCallback(async (session: Session | null) => {
     const user = session?.user ?? null;
     let profile: UserProfile | null = null;
-    if (user) profile = await fetchProfile(user.id);
+    
+    if (user) {
+      profile = await fetchProfile(user.id);
+    }
+    
     setState({ user, profile, loading: false, error: null });
   }, [fetchProfile]);
 
