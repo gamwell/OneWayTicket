@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "../../lib/supabase"; // ✅ Correction du chemin
-import { QrReader } from "react-qr-reader";
+import { supabase } from "../../lib/supabase";
+import { Html5QrcodeScanner } from "html5-qrcode";
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function ScanPage() {
@@ -14,6 +14,26 @@ export default function ScanPage() {
   const scanLock = useRef(false);
 
   // ------------------------------------------------------------
+  // 🔥 INITIALISATION DU SCANNER html5-qrcode
+  // ------------------------------------------------------------
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
+      { fps: 10, qrbox: 250 },
+      false
+    );
+
+    scanner.render(
+      (result) => handleScan(result),
+      (error) => console.warn("QR scan error:", error)
+    );
+
+    return () => {
+      scanner.clear().catch(console.error);
+    };
+  }, []);
+
+  // ------------------------------------------------------------
   // 🔥 SYNCHRONISATION ENTRE SCANNERS (INSERT scan_logs)
   // ------------------------------------------------------------
   useEffect(() => {
@@ -24,8 +44,6 @@ export default function ScanPage() {
         { event: "INSERT", schema: "public", table: "scan_logs" },
         (payload) => {
           const scannedTicket = payload.new.ticket_id;
-
-          // Ne pas déclencher si c'est le même ticket scanné ici
           if (lastScannedTicket && scannedTicket !== lastScannedTicket) {
             setStatus("invalid");
             setMessage("Billet déjà validé sur un autre scanner");
@@ -49,8 +67,11 @@ export default function ScanPage() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "tickets" },
         (payload) => {
-          // Vérifier que le ticket modifié est celui scanné
-          if (lastScannedTicket && payload.new.id === lastScannedTicket && payload.new.checked_in) {
+          if (
+            lastScannedTicket &&
+            payload.new.id === lastScannedTicket &&
+            payload.new.checked_in
+          ) {
             setStatus("invalid");
             setMessage("Billet déjà validé ailleurs");
           }
@@ -64,12 +85,12 @@ export default function ScanPage() {
   }, [lastScannedTicket]);
 
   // ------------------------------------------------------------
-  // 🔥 VERSION AMÉLIORÉE DU SCAN
+  // 🔥 LOGIQUE DE SCAN
   // ------------------------------------------------------------
   const handleScan = async (data: string | null) => {
     if (!data) return;
 
-    // ⚡ Anti-spam : ignore si déjà en traitement
+    // ⚡ Anti-spam
     if (scanLock.current) return;
     scanLock.current = true;
     setTimeout(() => (scanLock.current = false), 1000);
@@ -124,7 +145,7 @@ export default function ScanPage() {
       setStatus("valid");
       setMessage("Billet validé — entrée autorisée");
 
-      // Reset message après 3 secondes pour permettre un nouveau scan clair
+      // Reset après 3 secondes
       setTimeout(() => {
         setStatus("idle");
         setMessage("Scannez un billet pour commencer");
@@ -141,12 +162,9 @@ export default function ScanPage() {
     <div className="p-6 text-center">
       <h1 className="text-3xl font-bold mb-6">Scanner un billet</h1>
 
+      {/* 🔥 Conteneur du scanner html5-qrcode */}
       <div className="max-w-sm mx-auto">
-        <QrReader
-          onResult={(result) => handleScan(result?.getText() || null)}
-          constraints={{ facingMode: "environment" }}
-          containerStyle={{ width: "100%" }}
-        />
+        <div id="qr-reader" style={{ width: "100%" }} />
       </div>
 
       {/* 🔥 Messages dynamiques */}
@@ -154,15 +172,12 @@ export default function ScanPage() {
         {status === "valid" && (
           <p className="text-green-400 font-bold text-xl">✔ {message}</p>
         )}
-
         {status === "invalid" && (
           <p className="text-red-400 font-bold text-xl">✖ {message}</p>
         )}
-
         {status === "pending" && (
           <p className="text-yellow-300 font-bold text-xl">⏳ {message}</p>
         )}
-
         {status === "idle" && (
           <p className="text-gray-300 text-lg">{message}</p>
         )}
