@@ -9,8 +9,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // ✅ Correction ici
-  const { signIn, loginWithGoogle } = useAuth();
+  // ✅ Correction : signInWithGoogle au lieu de loginWithGoogle
+  const { signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -21,7 +21,6 @@ export default function LoginPage() {
     try {
       const { error } = await signIn(email, password);
       if (error) throw error;
-
       navigate('/');
     } catch (error: any) {
       console.error("Erreur de login:", error);
@@ -39,8 +38,8 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMsg('');
     try {
-      // ✅ Correction ici
-      await loginWithGoogle();
+      // ✅ Correction : signInWithGoogle au lieu de loginWithGoogle
+      await signInWithGoogle();
     } catch (error: any) {
       setErrorMsg("Erreur Google : " + error.message);
       setLoading(false);
@@ -104,7 +103,9 @@ export default function LoginPage() {
 
         <div className="relative my-8">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-          <div className="relative flex justify-center text-[10px] uppercase font-bold"><span className="bg-[#1a0525] px-4 text-white/20">Ou continuer avec</span></div>
+          <div className="relative flex justify-center text-[10px] uppercase font-bold">
+            <span className="bg-[#1a0525] px-4 text-white/20">Ou continuer avec</span>
+          </div>
         </div>
 
         <button
