@@ -31,7 +31,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
       redirected.current = true;
       return <Navigate to="/auth/login" state={{ from: location }} replace />;
     }
-    return null; // Sécurise le rendu
+    return null;
   }
 
   // 3️⃣ Profil pas encore chargé → attendre
@@ -47,9 +47,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   }
 
   // 4️⃣ Vérification admin si nécessaire
+  // ✅ Ajout de "administrateur" pour matcher la valeur dans Supabase
   const isAdmin =
     profile.role === "admin" ||
     profile.role === "superadmin" ||
+    profile.role === "administrateur" ||
     profile.is_admin === true;
 
   if (requireAdmin && !isAdmin) {
