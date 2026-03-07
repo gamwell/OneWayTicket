@@ -26,6 +26,12 @@ const ProfilePage        = lazy(() => import("./pages/ProfilePage"));
 const MyTicketsPage      = lazy(() => import("./pages/MyTicketsPage"));
 const TicketPage         = lazy(() => import("./pages/TicketPage"));
 
+// ✅ NOUVELLES PAGES
+const AboutPage          = lazy(() => import("./pages/AboutPage"));
+const TermsPage          = lazy(() => import("./pages/legal/TermsPage"));
+const PrivacyPage        = lazy(() => import("./pages/legal/PrivacyPage"));
+const MentionsLegalesPage = lazy(() => import("./pages/legal/MentionsLegalesPage"));
+
 // AUTH PUBLIC
 const LoginPage          = lazy(() => import("./pages/auth/LoginPage"));
 const Register           = lazy(() => import("./pages/auth/Register"));
@@ -73,6 +79,12 @@ export default function App() {
                 <Route path="/events" element={<EventsPage />} />
                 <Route path="/events/:id" element={<EventDetailPage />} />
                 <Route path="/cart" element={<CartPage />} />
+
+                {/* ✅ ABOUT & LEGAL */}
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/legal/terms" element={<TermsPage />} />
+                <Route path="/legal/privacy" element={<PrivacyPage />} />
+                <Route path="/legal/mentions" element={<MentionsLegalesPage />} />
 
                 {/* --- AUTH --- */}
                 <Route path="/auth/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
