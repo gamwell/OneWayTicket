@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, Check, Info } from "lucide-react";
-import { useCart } from "../contexts/CartContext"; // ✔ chemin corrigé
+import { ShoppingCart, Check, Info, ArrowRight } from "lucide-react";
+import { useCart } from "../contexts/CartContext";
 
 interface EventCardProps {
   event: {
@@ -16,31 +16,12 @@ interface EventCardProps {
 
 export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const navigate = useNavigate();
-  const { addToCart, cart } = useCart();
-  const [isAdded, setIsAdded] = useState(false);
-
+  const { cart } = useCart();
   const isInCart = cart.some((item) => item.id === event.id);
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-
-    addToCart({
-      id: event.id,
-      title: event.title,
-      price: event.price,
-      image_url: event.image_url,
-      date: event.date,
-      location: event.location,
-    });
-
-    setIsAdded(true);
-    setTimeout(() => setIsAdded(false), 2000);
-  };
 
   return (
     <div
-      onClick={() => navigate(`/event/${event.id}`)}
+      onClick={() => navigate(`/events/${event.id}`)} // ✅ Route corrigée
       className="group bg-slate-900/50 backdrop-blur-sm rounded-[2rem] overflow-hidden border border-white/10 cursor-pointer hover:border-cyan-500/50 transition-all duration-300 shadow-xl"
     >
       <div className="h-52 overflow-hidden relative">
@@ -59,14 +40,13 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
         <h3 className="text-xl font-black text-white mb-1 uppercase italic tracking-tighter truncate">
           {event.title}
         </h3>
-
         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
           <Info size={12} className="text-cyan-500" /> Cliquez pour détails
         </p>
 
+        {/* ✅ Bouton navigue vers la page détail */}
         <button
-          onClick={handleAddToCart}
-          disabled={isInCart}
+          onClick={(e) => { e.stopPropagation(); navigate(`/events/${event.id}`); }}
           className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] flex justify-center items-center gap-2 transition-all ${
             isInCart
               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
@@ -74,17 +54,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
           }`}
         >
           {isInCart ? (
-            <>
-              <Check size={16} /> DÉJÀ AU PANIER
-            </>
-          ) : isAdded ? (
-            <>
-              <Check size={16} /> AJOUTÉ !
-            </>
+            <><Check size={16} /> DÉJÀ AU PANIER</>
           ) : (
-            <>
-              <ShoppingCart size={16} /> RÉSERVER MON BILLET
-            </>
+            <><ArrowRight size={16} /> RÉSERVER MON BILLET</>
           )}
         </button>
       </div>
