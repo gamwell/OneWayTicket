@@ -7,11 +7,11 @@ import { CheckCircle, XCircle, Loader2, Camera, Keyboard } from "lucide-react";
 export default function ScanPage() {
   const { user } = useAuth();
   const [status, setStatus] = useState<"idle" | "valid" | "invalid" | "pending">("idle");
-  const [message, setMessage] = useState("Scannez ou saisissez un ID de billet");
-  const [lastScannedTicket, setLastScannedTicket] = useState<string | null>(null);
+  const [message, setMessage] = useState("Scannez ou saisissez un code");
   const [scanning, setScanning] = useState(false);
-  const [manualId, setManualId] = useState("");
+  const [manualCode, setManualCode] = useState("");
   const [mode, setMode] = useState<"camera" | "manual">("camera");
+  const [lastTicket, setLastTicket] = useState<any>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanLock = useRef(false);
 
@@ -27,9 +27,9 @@ export default function ScanPage() {
       );
       setScanning(true);
       setMessage("Cadrez le QR code à 10-15cm");
-    } catch (err) {
+    } catch {
       setStatus("invalid");
-      setMessage("Impossible d'accéder à la caméra — utilisez la saisie manuelle");
+      setMessage("Caméra indisponible → utilisez le mode manuel");
       setMode("manual");
     }
   };
@@ -45,27 +45,11 @@ export default function ScanPage() {
   };
 
   useEffect(() => {
-    return () => {
-      if (scannerRef.current) scannerRef.current.stop().catch(console.error);
-    };
+    return () => { if (scannerRef.current) scannerRef.current.stop().catch(console.error); };
   }, []);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("scan-sync")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tickets" },
-        (payload) => {
-          if (lastScannedTicket && payload.new.id === lastScannedTicket && payload.new.checked_in) {
-            setStatus("invalid");
-            setMessage("Billet déjà validé ailleurs");
-          }
-        }
-      ).subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [lastScannedTicket]);
-
-  const handleScan = async (data: string | null) => {
-    if (!data || scanLock.current) return;
+  const validateTicket = async (ticketId: string, isQrHash = false) => {
+    if (scanLock.current) return;
     scanLock.current = true;
     setTimeout(() => (scanLock.current = false), 3000);
 
@@ -73,23 +57,16 @@ export default function ScanPage() {
     setMessage("Vérification...");
 
     try {
-      let ticketId = data.trim();
-      try {
-        const parsed = JSON.parse(data);
-        ticketId = parsed.id || data;
-      } catch { }
-
-      setLastScannedTicket(ticketId);
-
+      // Cherche par id, qr_code_hash, ou code_court
       const { data: ticket, error } = await supabase
         .from("tickets")
-        .select("*")
-        .or(`id.eq.${ticketId},qr_code_hash.eq.${ticketId}`)
+        .select("*, events(title)")
+        .or(`id.eq.${ticketId},qr_code_hash.eq.${ticketId},code_court.eq.${ticketId.toUpperCase()}`)
         .maybeSingle();
 
       if (error || !ticket) {
         setStatus("invalid");
-        setMessage("Billet introuvable");
+        setMessage("Billet introuvable ❌");
         resetAfterDelay();
         return;
       }
@@ -97,6 +74,7 @@ export default function ScanPage() {
       if (ticket.checked_in) {
         setStatus("invalid");
         setMessage("Billet déjà utilisé !");
+        setLastTicket(ticket);
         resetAfterDelay();
         return;
       }
@@ -105,27 +83,35 @@ export default function ScanPage() {
       await supabase.from("scan_logs").insert({ ticket_id: ticket.id, scanned_by: user?.id || null });
 
       setStatus("valid");
-      setMessage("✅ Entrée autorisée !");
+      setLastTicket(ticket);
+      setMessage(`Entrée autorisée ! 🎉`);
       resetAfterDelay();
     } catch {
       setStatus("invalid");
-      setMessage("QR Code invalide");
+      setMessage("Erreur de vérification");
       resetAfterDelay();
     }
   };
 
+  const handleScan = (data: string | null) => {
+    if (!data) return;
+    let ticketId = data.trim();
+    try { ticketId = JSON.parse(data).id || data; } catch { }
+    validateTicket(ticketId, true);
+  };
+
   const handleManualSubmit = () => {
-    if (!manualId.trim()) return;
-    handleScan(manualId.trim());
-    setManualId("");
+    if (!manualCode.trim()) return;
+    validateTicket(manualCode.trim());
+    setManualCode("");
   };
 
   const resetAfterDelay = () => {
     setTimeout(() => {
       setStatus("idle");
-      setMessage(mode === "camera" ? "Cadrez le QR code" : "Saisissez un ID de billet");
-      setLastScannedTicket(null);
-    }, 3000);
+      setLastTicket(null);
+      setMessage(mode === "camera" ? "Cadrez le QR code" : "Saisissez un code");
+    }, 4000);
   };
 
   return (
@@ -137,7 +123,7 @@ export default function ScanPage() {
         Scanner un billet
       </h1>
 
-      {/* Toggle mode */}
+      {/* Toggle */}
       <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-2xl border border-white/10">
         <button
           onClick={() => { setMode("camera"); if (scanning) stopScanner(); }}
@@ -153,7 +139,7 @@ export default function ScanPage() {
             mode === "manual" ? "bg-amber-400 text-black" : "text-white/50 hover:text-white"
           }`}
         >
-          <Keyboard size={16} /> Manuel
+          <Keyboard size={16} /> Code court
         </button>
       </div>
 
@@ -162,11 +148,7 @@ export default function ScanPage() {
         <>
           <div className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl mb-6 bg-black relative min-h-[280px] flex items-center justify-center">
             <div id="qr-reader" style={{ width: "100%" }} />
-            {!scanning && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Camera size={64} className="text-white/10" />
-              </div>
-            )}
+            {!scanning && <Camera size={64} className="text-white/10 absolute" />}
           </div>
           <button
             onClick={scanning ? stopScanner : startScanner}
@@ -174,34 +156,40 @@ export default function ScanPage() {
               scanning ? "bg-rose-500 hover:bg-rose-400 text-white" : "bg-amber-400 hover:bg-amber-300 text-black"
             }`}
           >
-            {scanning ? "⏹ Arrêter" : "▶ Démarrer la caméra"}
+            {scanning ? "⏹ Arrêter" : "▶ Démarrer"}
           </button>
         </>
       )}
 
-      {/* MODE MANUEL */}
+      {/* MODE CODE COURT */}
       {mode === "manual" && (
         <div className="w-full max-w-sm mb-6">
-          <p className="text-white/40 text-xs text-center mb-4 uppercase tracking-wider">
-            Copiez-collez l'ID du billet depuis Supabase ou le billet PDF
-          </p>
-          <div className="flex flex-col gap-3">
-            <input
-              type="text"
-              value={manualId}
-              onChange={(e) => setManualId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleManualSubmit()}
-              placeholder="UUID du billet ex: 73f09356-..."
-              className="w-full px-4 py-4 bg-white/5 border border-white/20 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:border-amber-400 font-mono text-sm"
-            />
-            <button
-              onClick={handleManualSubmit}
-              disabled={!manualId.trim() || status === "pending"}
-              className="w-full py-4 bg-amber-400 text-black font-black uppercase rounded-2xl hover:bg-amber-300 transition-all disabled:opacity-40"
-            >
-              {status === "pending" ? "Vérification..." : "Valider le billet"}
-            </button>
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 mb-4 text-center">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-2">
+              Code à 6 caractères visible sur le billet
+            </p>
+            <p className="text-amber-400 text-5xl font-black tracking-[0.4em] mb-2">
+              AB3X7K
+            </p>
+            <p className="text-white/20 text-xs">Exemple de code court</p>
           </div>
+
+          <input
+            type="text"
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && handleManualSubmit()}
+            placeholder="Ex: AB3X7K"
+            maxLength={6}
+            className="w-full px-4 py-5 bg-white/5 border border-white/20 rounded-2xl text-white text-center text-3xl font-black tracking-[0.4em] placeholder:text-white/20 focus:outline-none focus:border-amber-400 uppercase mb-3"
+          />
+          <button
+            onClick={handleManualSubmit}
+            disabled={manualCode.length < 4 || status === "pending"}
+            className="w-full py-4 bg-amber-400 text-black font-black uppercase rounded-2xl hover:bg-amber-300 transition-all disabled:opacity-40 text-lg"
+          >
+            {status === "pending" ? "Vérification..." : "Valider ✓"}
+          </button>
         </div>
       )}
 
@@ -216,12 +204,19 @@ export default function ScanPage() {
         {status === "invalid" && <XCircle className="w-12 h-12 text-rose-400 mx-auto mb-3" />}
         {status === "pending" && <Loader2 className="w-12 h-12 text-amber-400 mx-auto mb-3 animate-spin" />}
         {status === "idle" && (mode === "camera" ? <Camera className="w-12 h-12 text-white/20 mx-auto mb-3" /> : <Keyboard className="w-12 h-12 text-white/20 mx-auto mb-3" />)}
-        <p className={`font-bold text-lg ${
+
+        <p className={`font-bold text-xl mb-2 ${
           status === "valid" ? "text-emerald-400" :
           status === "invalid" ? "text-rose-400" :
-          status === "pending" ? "text-amber-400" :
-          "text-white/50"
+          status === "pending" ? "text-amber-400" : "text-white/50"
         }`}>{message}</p>
+
+        {/* Infos billet scanné */}
+        {lastTicket && status === "valid" && (
+          <p className="text-emerald-300/70 text-sm mt-1">
+            🎫 {lastTicket.events?.title || "Billet valide"}
+          </p>
+        )}
       </div>
     </div>
   );
