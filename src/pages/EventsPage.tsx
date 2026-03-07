@@ -10,19 +10,19 @@ type EventType = {
   image_url: string;
   date: string;
   location: string;
-  category_id?: string;
+  category_id?: number;
 };
 
 type Category = {
-  id: string;
-  nom: string;
-  description?: string;
+  id: number;
+  name: string;
+  color: string;
 };
 
 const EventsPage = () => {
   const [events, setEvents] = useState<EventType[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +32,10 @@ const EventsPage = () => {
       try {
         setLoading(true);
 
-        // Charger événements + catégories en parallèle
         const [eventsRes, catsRes] = await Promise.all([
           supabase.from("events").select("*").order("date", { ascending: true }),
-          supabase.from("categories").select("id, nom, description").order("nom"),
+          // ✅ Bonne table : event_categories, colonne : name
+          supabase.from("event_categories").select("id, name, color").order("name"),
         ]);
 
         if (eventsRes.error) throw eventsRes.error;
@@ -52,13 +52,13 @@ const EventsPage = () => {
     fetchData();
   }, []);
 
-  // Filtrage combiné : catégorie + recherche texte
+  // Filtrage combiné
   const filteredEvents = events.filter((event) => {
     const matchSearch = search === "" ||
       event.title.toLowerCase().includes(search.toLowerCase()) ||
       event.location?.toLowerCase().includes(search.toLowerCase());
 
-    const matchCategory = !selectedCategory || event.category_id === selectedCategory;
+    const matchCategory = selectedCategory === null || event.category_id === selectedCategory;
 
     return matchSearch && matchCategory;
   });
@@ -121,13 +121,18 @@ const EventsPage = () => {
                 onClick={() => setSelectedCategory(
                   selectedCategory === cat.id ? null : cat.id
                 )}
+                style={selectedCategory === cat.id ? {
+                  backgroundColor: cat.color,
+                  borderColor: cat.color,
+                  boxShadow: `0 4px 20px ${cat.color}40`
+                } : {}}
                 className={`px-5 py-2 rounded-full font-bold text-sm uppercase tracking-wider transition-all border ${
                   selectedCategory === cat.id
-                    ? "bg-rose-500 text-white border-rose-500 shadow-lg shadow-rose-500/20"
+                    ? "text-white"
                     : "bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                {cat.nom}
+                {cat.name}
               </button>
             ))}
           </div>
@@ -137,8 +142,8 @@ const EventsPage = () => {
         {!loading && !error && (
           <p className="text-center text-white/30 text-xs uppercase tracking-widest mb-8">
             {filteredEvents.length} événement{filteredEvents.length !== 1 ? "s" : ""}
-            {selectedCategory && ` dans cette catégorie`}
-            {search && ` pour "${search}"`}
+            {selectedCategory && ` · ${categories.find(c => c.id === selectedCategory)?.name}`}
+            {search && ` · "${search}"`}
           </p>
         )}
 
