@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Loader2, LogIn } from 'lucide-react';
+import { Mail, Lock, Loader2, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // ✅ Toggle
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // ✅ Correction : signInWithGoogle au lieu de loginWithGoogle
   const { signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
@@ -17,13 +17,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
-
     try {
       const { error } = await signIn(email, password);
       if (error) throw error;
       navigate('/');
     } catch (error: any) {
-      console.error("Erreur de login:", error);
       if (error.message.includes("Invalid login credentials")) {
         setErrorMsg("Email ou mot de passe incorrect.");
       } else {
@@ -38,7 +36,6 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMsg('');
     try {
-      // ✅ Correction : signInWithGoogle au lieu de loginWithGoogle
       await signInWithGoogle();
     } catch (error: any) {
       setErrorMsg("Erreur Google : " + error.message);
@@ -48,8 +45,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1a0525] p-5 font-sans relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-rose-500/10 blur-[120px] rounded-full"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-500/10 blur-[120px] rounded-full"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-rose-500/10 blur-[120px] rounded-full" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-500/10 blur-[120px] rounded-full" />
 
       <div className="relative z-10 bg-white/5 backdrop-blur-2xl p-10 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-white/10">
         
@@ -80,16 +77,24 @@ export default function LoginPage() {
             />
           </div>
 
+          {/* ✅ Champ mot de passe avec icône œil */}
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="MOT DE PASSE"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:border-amber-300/50 text-white text-sm transition-all placeholder:text-white/20"
+              className="w-full py-4 pl-12 pr-12 bg-white/5 border border-white/10 rounded-2xl outline-none focus:border-amber-300/50 text-white text-sm transition-all placeholder:text-white/20"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
 
           <button
@@ -102,7 +107,7 @@ export default function LoginPage() {
         </form>
 
         <div className="relative my-8">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
           <div className="relative flex justify-center text-[10px] uppercase font-bold">
             <span className="bg-[#1a0525] px-4 text-white/20">Ou continuer avec</span>
           </div>
