@@ -21,8 +21,8 @@ export default function ScanPage() {
       await html5QrCode.start(
         { facingMode: "environment" },
         {
-          fps: 15,                          // ✅ FPS augmenté
-          qrbox: { width: 300, height: 300 }, // ✅ Zone plus grande
+          fps: 20,                          // ✅ FPS augmenté
+          qrbox: { width: 150, height: 150 }, // ✅ Zone plus grande
           aspectRatio: 1.0,
           disableFlip: false,               // ✅ Accepte les QR retournés
         },
