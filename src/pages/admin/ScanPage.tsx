@@ -19,21 +19,21 @@ export default function ScanPage() {
       scannerRef.current = html5QrCode;
 
       await html5QrCode.start(
-        // ✅ Force la caméra arrière sur mobile
         { facingMode: "environment" },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
+          fps: 15,                          // ✅ FPS augmenté
+          qrbox: { width: 300, height: 300 }, // ✅ Zone plus grande
           aspectRatio: 1.0,
+          disableFlip: false,               // ✅ Accepte les QR retournés
         },
         (result) => handleScan(result),
-        (error) => console.warn("QR scan error:", error)
+        () => {} // on ignore les erreurs de frame
       );
 
       setScanning(true);
-      setMessage("Pointez la caméra vers un QR code");
+      setMessage("Cadrez le QR code dans le carré — à 30-40cm");
     } catch (err) {
-      console.error("Erreur démarrage caméra:", err);
+      console.error("Erreur caméra:", err);
       setStatus("invalid");
       setMessage("Impossible d'accéder à la caméra. Vérifiez les permissions.");
     }
@@ -45,14 +45,13 @@ export default function ScanPage() {
       scannerRef.current = null;
     }
     setScanning(false);
-    setMessage("Scanner arrêté");
+    setMessage("Appuyez sur Démarrer pour scanner");
+    setStatus("idle");
   };
 
   useEffect(() => {
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
-      }
+      if (scannerRef.current) scannerRef.current.stop().catch(console.error);
     };
   }, []);
 
@@ -80,17 +79,18 @@ export default function ScanPage() {
     setMessage("Vérification du billet...");
 
     try {
-      // Supporte QR code = UUID direct ou JSON avec id
-      let ticketId = data;
+      // ✅ Supporte UUID direct OU JSON
+      let ticketId = data.trim();
       try {
         const parsed = JSON.parse(data);
         ticketId = parsed.id || data;
       } catch {
-        ticketId = data; // QR code = UUID direct
+        ticketId = data.trim();
       }
 
       setLastScannedTicket(ticketId);
 
+      // ✅ Cherche par id OU qr_code_hash
       const { data: ticket, error } = await supabase
         .from("tickets")
         .select("*")
@@ -112,10 +112,13 @@ export default function ScanPage() {
       }
 
       await supabase.from("tickets").update({ checked_in: true }).eq("id", ticket.id);
-      await supabase.from("scan_logs").insert({ ticket_id: ticket.id, scanned_by: user?.id || null });
+      await supabase.from("scan_logs").insert({
+        ticket_id: ticket.id,
+        scanned_by: user?.id || null,
+      });
 
       setStatus("valid");
-      setMessage("✅ Entrée autorisée !");
+      setMessage("Entrée autorisée !");
       resetAfterDelay();
     } catch (err) {
       console.error("Erreur scan:", err);
@@ -128,30 +131,30 @@ export default function ScanPage() {
   const resetAfterDelay = () => {
     setTimeout(() => {
       setStatus("idle");
-      setMessage("Pointez la caméra vers un QR code");
+      setMessage("Cadrez le QR code dans le carré — à 30-40cm");
       setLastScannedTicket(null);
     }, 3000);
   };
 
-  const bgColor = {
-    idle: "bg-[#1a0525]",
-    valid: "bg-emerald-900/40",
-    invalid: "bg-rose-900/40",
-    pending: "bg-amber-900/20",
-  }[status];
-
   return (
-    <div className={`min-h-screen ${bgColor} text-white flex flex-col items-center pt-24 px-6 pb-16 transition-colors duration-500`}>
-      <h1 className="text-3xl font-black uppercase italic mb-8 text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-300">
+    <div className={`min-h-screen text-white flex flex-col items-center pt-24 px-6 pb-16 transition-colors duration-500 ${
+      status === "valid" ? "bg-emerald-900/40" :
+      status === "invalid" ? "bg-rose-900/40" :
+      "bg-[#1a0525]"
+    }`}>
+      <h1 className="text-3xl font-black uppercase italic mb-2 text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-300">
         Scanner un billet
       </h1>
+      <p className="text-white/30 text-xs mb-8 uppercase tracking-widest">
+        Tenez le téléphone à 30-40cm du QR code
+      </p>
 
       {/* Conteneur scanner */}
-      <div className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl mb-6 bg-black">
+      <div className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl mb-6 bg-black relative min-h-[320px] flex items-center justify-center">
         <div id="qr-reader" style={{ width: "100%" }} />
         {!scanning && (
-          <div className="flex items-center justify-center h-48 text-white/20">
-            <Camera size={48} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Camera size={64} className="text-white/10" />
           </div>
         )}
       </div>
@@ -159,13 +162,13 @@ export default function ScanPage() {
       {/* Bouton start/stop */}
       <button
         onClick={scanning ? stopScanner : startScanner}
-        className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest transition-all mb-8 ${
+        className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest transition-all mb-8 shadow-lg ${
           scanning
-            ? "bg-rose-500 hover:bg-rose-400 text-white"
-            : "bg-amber-400 hover:bg-amber-300 text-black"
+            ? "bg-rose-500 hover:bg-rose-400 text-white shadow-rose-500/30"
+            : "bg-amber-400 hover:bg-amber-300 text-black shadow-amber-500/30"
         }`}
       >
-        {scanning ? "Arrêter" : "Démarrer la caméra"}
+        {scanning ? "⏹ Arrêter" : "▶ Démarrer la caméra"}
       </button>
 
       {/* Feedback */}
