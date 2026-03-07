@@ -1,74 +1,211 @@
-import { Link } from "react-router-dom";
-import { BookOpen } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, User, Server } from 'lucide-react';
 
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-    <h2 className="text-white font-black uppercase tracking-wide mb-3 text-sm">{title}</h2>
-    <div className="text-white/60 leading-relaxed space-y-2">{children}</div>
-  </div>
-);
-
-export default function MentionsLegalesPage() {
+const MentionsLegalesPage = () => {
   return (
-    <div className="min-h-screen bg-[#1a0525] text-white pt-24 pb-20 px-6">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-500/10 border border-rose-500/20 rounded-full text-rose-300 text-[10px] font-black uppercase tracking-widest mb-4">
-            <BookOpen size={12} /> Légal
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-gradient-to-br from-primary-900 via-secondary-600 to-secondary-500 text-white py-16 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <Building2 className="w-16 h-16 mx-auto mb-4" />
+          <h1 className="text-4xl font-display font-bold mb-4">Mentions Légales</h1>
+          <p className="text-lg opacity-95">
+            Informations légales et contacts officiels
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center space-x-2">
+            <Building2 className="w-6 h-6 text-secondary-600" />
+            <span>Éditeur du site</span>
+          </h2>
+          <div className="space-y-4 text-gray-700">
+            <div>
+              <p className="font-semibold text-gray-900">Raison sociale :</p>
+              <p>ONEWAYTICKET SAS</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Capital social :</p>
+              <p>50 000 €</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">SIRET :</p>
+              <p>123 456 789 00010</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">RCS :</p>
+              <p>Paris B 123 456 789</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Numéro TVA intracommunautaire :</p>
+              <p>FR 12 123456789</p>
+            </div>
+            <div className="flex items-start space-x-2">
+              <MapPin className="w-5 h-5 text-secondary-600 mt-1 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-gray-900">Siège social :</p>
+                <p>123 Avenue des Événements</p>
+                <p>75001 Paris, France</p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-4xl font-black uppercase italic mb-2">Mentions Légales</h1>
-          <p className="text-white/30 text-sm">Dernière mise à jour : 1er janvier 2025</p>
         </div>
 
-        <div className="space-y-6">
-          <Section title="Éditeur du site">
-            <p><span className="text-white font-bold">Raison sociale :</span> OneWayTicket SAS</p>
-            <p><span className="text-white font-bold">Forme juridique :</span> Société par Actions Simplifiée (SAS)</p>
-            <p><span className="text-white font-bold">Capital social :</span> 10 000 €</p>
-            <p><span className="text-white font-bold">RCS :</span> Paris B 123 456 789</p>
-            <p><span className="text-white font-bold">N° TVA intracommunautaire :</span> FR 12 123456789</p>
-            <p><span className="text-white font-bold">Siège social :</span> 12 Rue de la Paix, 75001 Paris, France</p>
-          </Section>
-
-          <Section title="Contact">
-            <p><span className="text-white font-bold">Email :</span>{" "}
-              <a href="mailto:contact@onewayticket.fr" className="text-rose-300 hover:underline">contact@onewayticket.fr</a>
-            </p>
-            <p><span className="text-white font-bold">Téléphone :</span>{" "}
-              <a href="tel:+33142000000" className="text-rose-300 hover:underline">+33 1 42 00 00 00</a>
-            </p>
-            <p><span className="text-white font-bold">Directeur de la publication :</span> Alexandre Moreau</p>
-          </Section>
-
-          <Section title="Hébergement">
-            <p><span className="text-white font-bold">Hébergeur frontend :</span> Vercel Inc., 340 Pine Street Suite 701, San Francisco, CA 94104, États-Unis</p>
-            <p><span className="text-white font-bold">Hébergeur base de données :</span> Supabase Inc. — serveurs localisés dans l'Union Européenne (Frankfurt, Allemagne)</p>
-          </Section>
-
-          <Section title="Propriété intellectuelle">
-            <p>L'ensemble du contenu de ce site (textes, images, logo, code, design) est la propriété exclusive de OneWayTicket SAS et est protégé par les lois françaises et internationales relatives à la propriété intellectuelle.</p>
-            <p>Toute reproduction, représentation, modification ou exploitation non autorisée de tout ou partie de ces éléments est strictement interdite.</p>
-          </Section>
-
-          <Section title="Responsabilité">
-            <p>OneWayTicket SAS s'efforce d'assurer l'exactitude et la mise à jour des informations diffusées sur ce site. Toutefois, elle ne peut garantir l'exactitude, la précision ou l'exhaustivité des informations mises à disposition.</p>
-            <p>OneWayTicket SAS décline toute responsabilité pour tout dommage résultant d'une intrusion frauduleuse d'un tiers ayant entraîné une modification des informations.</p>
-          </Section>
-
-          <Section title="Liens hypertextes">
-            <p>Le site peut contenir des liens vers d'autres sites internet. OneWayTicket SAS n'exerce aucun contrôle sur ces sites et décline toute responsabilité quant à leur contenu.</p>
-          </Section>
-
-          <Section title="Droit applicable">
-            <p>Les présentes mentions légales sont soumises au droit français. En cas de litige, les tribunaux français seront seuls compétents.</p>
-            <p>Pour toute réclamation : <a href="mailto:contact@onewayticket.fr" className="text-rose-300 hover:underline">contact@onewayticket.fr</a></p>
-          </Section>
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center space-x-2">
+            <User className="w-6 h-6 text-secondary-600" />
+            <span>Directeur de la publication</span>
+          </h2>
+          <div className="space-y-4 text-gray-700">
+            <div>
+              <p className="font-semibold text-gray-900">Nom :</p>
+              <p>Marie DUBOIS</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Fonction :</p>
+              <p>Présidente - Directrice Générale</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Mail className="w-5 h-5 text-secondary-600" />
+              <a href="mailto:direction@onewayticket.fr" className="text-secondary-600 hover:text-secondary-700">
+                direction@onewayticket.fr
+              </a>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-12 text-center">
-          <Link to="/" className="text-rose-400 hover:text-rose-300 font-bold uppercase tracking-widest text-sm underline">← Retour à l'accueil</Link>
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center space-x-2">
+            <Mail className="w-6 h-6 text-secondary-600" />
+            <span>Contacts</span>
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-3">Support Client</h3>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-secondary-600" />
+                  <a href="mailto:support@onewayticket.fr" className="text-secondary-600 hover:text-secondary-700">
+                    support@onewayticket.fr
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4 text-secondary-600" />
+                  <a href="tel:+33123456789" className="text-secondary-600 hover:text-secondary-700">
+                    +33 1 23 45 67 89
+                  </a>
+                </div>
+                <p className="text-gray-600">Lundi - Vendredi : 9h - 18h</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-3">Service Commercial</h3>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-secondary-600" />
+                  <a href="mailto:commercial@onewayticket.fr" className="text-secondary-600 hover:text-secondary-700">
+                    commercial@onewayticket.fr
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4 text-secondary-600" />
+                  <a href="tel:+33123456790" className="text-secondary-600 hover:text-secondary-700">
+                    +33 1 23 45 67 90
+                  </a>
+                </div>
+                <p className="text-gray-600">Lundi - Vendredi : 9h - 18h</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-3">Webmaster / Support Technique</h3>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex items-center space-x-2">
+                  <User className="w-4 h-4 text-secondary-600" />
+                  <span>Thomas MARTIN</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-secondary-600" />
+                  <a href="mailto:webmaster@onewayticket.fr" className="text-secondary-600 hover:text-secondary-700">
+                    webmaster@onewayticket.fr
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold text-gray-900 mb-3">Délégué à la Protection des Données (DPO)</h3>
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex items-center space-x-2">
+                  <User className="w-4 h-4 text-secondary-600" />
+                  <span>Sophie BERNARD</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-secondary-600" />
+                  <a href="mailto:dpo@onewayticket.fr" className="text-secondary-600 hover:text-secondary-700">
+                    dpo@onewayticket.fr
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-display font-bold text-gray-900 mb-6 flex items-center space-x-2">
+            <Server className="w-6 h-6 text-secondary-600" />
+            <span>Hébergement</span>
+          </h2>
+          <div className="space-y-4 text-gray-700">
+            <div>
+              <p className="font-semibold text-gray-900">Hébergeur :</p>
+              <p>Supabase Inc.</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Adresse :</p>
+              <p>970 Toa Payoh North, #07-04</p>
+              <p>Singapore 318992</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Mail className="w-5 h-5 text-secondary-600" />
+              <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-secondary-600 hover:text-secondary-700">
+                supabase.com
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <h2 className="text-2xl font-display font-bold text-gray-900 mb-6">Propriété intellectuelle</h2>
+          <div className="prose prose-gray max-w-none text-gray-700">
+            <p>
+              L'ensemble du contenu du site ONEWAYTICKET (structure, textes, logos, images, vidéos, etc.)
+              est la propriété exclusive de ONEWAYTICKET SAS, sauf mention contraire.
+            </p>
+            <p className="mt-4">
+              Toute reproduction, représentation, modification, publication, transmission, dénaturation,
+              totale ou partielle du site ou de son contenu, par quelque procédé que ce soit, et sur
+              quelque support que ce soit est interdite sans l'autorisation écrite préalable de ONEWAYTICKET SAS.
+            </p>
+            <p className="mt-4">
+              Marques et logos ONEWAYTICKET sont des marques déposées. Toute reproduction totale ou partielle
+              de ces marques sans autorisation préalable et écrite de ONEWAYTICKET SAS est prohibée.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8 p-6 bg-secondary-50 rounded-lg border border-secondary-200">
+          <p className="text-sm text-gray-600 text-center">
+            Une réalisation{' '}
+            <span className="font-semibold text-secondary-600">DigitBinary</span>
+            {' '}- Shaping tomorrow, today
+          </p>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default MentionsLegalesPage;
