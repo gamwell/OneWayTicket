@@ -10,19 +10,19 @@ const Footer = () => {
         
         {/* BRAND */}
         <div className="md:col-span-2 space-y-6">
-          <Link to="/" className="flex items-center gap-3 group">
+          <a href="https://williams-top-notch-site-385a50.webflow.io/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 group">
             <div className="w-8 h-8 bg-gradient-to-tr from-pink-500 to-cyan-400 rounded-lg flex items-center justify-center shadow-lg group-hover:rotate-12 transition-all">
               <span className="text-white font-black italic">O</span>
             </div>
             <span className="text-xl font-black tracking-tighter text-white uppercase italic">ONEWAYTICKET</span>
-          </Link>
+          </a>
           <p className="text-slate-400 text-sm max-w-sm leading-relaxed">
             La destination ultime pour vos billets d'exception. Vivez des moments inoubliables avec une gestion simplifiée et sécurisée. Le futur de vos souvenirs commence ici.
           </p>
           <div className="flex gap-4">
-            <SocialIcon href="#" icon={<Instagram size={18} />} />
-            <SocialIcon href="#" icon={<Twitter size={18} />} />
-            <SocialIcon href="#" icon={<Facebook size={18} />} />
+            <SocialIcon href="https://www.instagram.com/onewayticket.fr" icon={<Instagram size={18} />} />
+            <SocialIcon href="https://x.com/onewayticket_fr" icon={<Twitter size={18} />} />
+            <SocialIcon href="https://www.facebook.com/profile.php?id=100091129796232" icon={<Facebook size={18} />} />
           </div>
         </div>
 
@@ -41,7 +41,7 @@ const Footer = () => {
             </li>
             <li>
               {/* ✅ Lien Contact → mailto */}
-              <a href="mailto:clgvernant@gmail.com" className="hover:text-cyan-400 transition-colors">
+              <a href="mailto:contact@onewayticket.fr" className="hover:text-cyan-400 transition-colors">
                 Contact
               </a>
             </li>
@@ -86,7 +86,7 @@ const Footer = () => {
 };
 
 const SocialIcon = ({ icon, href }: { icon: React.ReactNode; href: string }) => (
-  <a href={href} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white hover:text-slate-900 hover:scale-110 transition-all duration-300">
+  <a href={href} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white hover:text-slate-900 hover:scale-110 transition-all duration-300">
     {icon}
   </a>
 );
