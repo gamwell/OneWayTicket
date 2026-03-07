@@ -24,50 +24,53 @@ const EventDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
-
-  // Profil utilisateur
   const [profileTypeName, setProfileTypeName] = useState<string | null>(null);
-  const [discountStatus, setDiscountStatus] = useState<string>("none"); // none | pending | approved | rejected
+  const [discountStatus, setDiscountStatus] = useState<string>("none");
 
+  // ✅ Chargement événement séparé
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchEvent = async () => {
       if (!id) return;
       try {
-        const [eventRes, profileRes] = await Promise.all([
-          supabase.from("events").select("*, ticket_types(*)").eq("id", id).single(),
-          user
-            ? supabase
-                .from("user_profiles")
-                .select("discount_status, profile_types(name)")
-                .eq("id", user.id)
-                .maybeSingle()
-            : Promise.resolve({ data: null }),
-        ]);
-
-        if (eventRes.data) setEvent(eventRes.data);
-		
-		// Ajoute juste ici ↓
-        console.log("👤 User ID:", user?.id);
-        console.log("📦 Profile data:", profileRes.data);
-        console.log("🎫 Discount status:", profileRes.data?.discount_status);
-
-        setDiscountStatus(profileRes.data?.discount_status ?? "none");
-        setProfileTypeName(profileRes.data?.profile_types?.name || null);
-
-        // Si pas de profil ou discount_status NULL → "none" pour afficher le bouton
-        setDiscountStatus(profileRes.data?.discount_status ?? "none");
-        setProfileTypeName(profileRes.data?.profile_types?.name || null);
+        const { data } = await supabase
+          .from("events")
+          .select("*, ticket_types(*)")
+          .eq("id", id)
+          .single();
+        if (data) setEvent(data);
       } catch (err) {
-        console.error("Erreur:", err);
+        console.error("Erreur event:", err);
       }
       setLoading(false);
     };
-    fetchData();
-  }, [id, user]);
+    fetchEvent();
+  }, [id]);
+
+  // ✅ Chargement profil séparé — se relance quand user devient disponible
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select("discount_status, profile_types(name)")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        console.log("👤 User ID:", user.id);
+        console.log("📦 Profile:", data, "| Error:", error);
+
+        setDiscountStatus(data?.discount_status ?? "none");
+        setProfileTypeName((data?.profile_types as any)?.name || null);
+      } catch (err) {
+        console.error("Erreur profil:", err);
+      }
+    };
+    fetchProfile();
+  }, [user?.id]); // ✅ Se déclenche dès que user est chargé par AuthContext
 
   const basePrice = event?.ticket_types?.[0]?.price || event?.price || 50;
 
-  // Réduction active uniquement si approved
   const discount = discountStatus === "approved" && profileTypeName
     ? DISCOUNTS[profileTypeName] ?? null
     : null;
@@ -76,7 +79,6 @@ const EventDetailPage = () => {
     ? Math.round(basePrice * (1 - discount.rate) * 100) / 100
     : basePrice;
 
-  // Appelé par le modal quand admin a déjà approuvé
   const handleDiscountApplied = (typeName: string, rate: number) => {
     setProfileTypeName(typeName);
     setDiscountStatus("approved");
@@ -112,7 +114,6 @@ const EventDetailPage = () => {
   return (
     <div className="min-h-screen bg-[#1a0525] text-white pb-20">
 
-      {/* Modal justificatif */}
       {showDiscountModal && user && (
         <DiscountRequestModal
           userId={user.id}
@@ -121,7 +122,6 @@ const EventDetailPage = () => {
         />
       )}
 
-      {/* HEADER IMAGE */}
       <div className="relative h-[50vh] w-full">
         <div className="absolute inset-0 bg-gradient-to-t from-[#1a0525] via-[#1a0525]/50 to-transparent z-10" />
         <img
@@ -137,7 +137,6 @@ const EventDetailPage = () => {
         </button>
       </div>
 
-      {/* CONTENT */}
       <div className="max-w-5xl mx-auto px-6 -mt-20 relative z-20">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl">
           <div className="flex flex-col md:flex-row justify-between gap-8 mb-8">
@@ -153,7 +152,6 @@ const EventDetailPage = () => {
               </div>
             </div>
 
-            {/* PRIX */}
             <div className="flex flex-col gap-3 min-w-[200px] items-end">
               {discount ? (
                 <>
@@ -175,7 +173,6 @@ const EventDetailPage = () => {
           <div className="border-t border-white/10 my-8" />
 
           <div className="grid md:grid-cols-3 gap-12">
-            {/* DESCRIPTION */}
             <div className="md:col-span-2 space-y-6 text-white/70 leading-relaxed">
               <h3 className="text-xl font-bold text-white uppercase">Description</h3>
               <p>{event.description || "Aucune description disponible."}</p>
@@ -191,11 +188,9 @@ const EventDetailPage = () => {
               </div>
             </div>
 
-            {/* CTA */}
             <div className="md:col-span-1">
               <div className="bg-[#13031C] p-6 rounded-3xl border border-white/10 sticky top-24 space-y-4">
 
-                {/* Badge réduction approuvée */}
                 {discount && (
                   <div className={`p-3 rounded-2xl border text-center ${discount.color}`}>
                     <p className="text-xs font-black uppercase">{discount.label} appliqué ✓</p>
@@ -203,13 +198,12 @@ const EventDetailPage = () => {
                   </div>
                 )}
 
-                {/* Badge en attente */}
                 {discountStatus === "pending" && (
                   <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-center">
                     <p className="text-amber-300 text-xs font-black uppercase flex items-center justify-center gap-1">
                       <ClockIcon size={12} /> Réduction en attente de validation
                     </p>
-                    <p className="text-amber-300/50 text-[10px] mt-1">Prix normal appliqué jusqu'à validation</p>
+                    <p className="text-amber-300/50 text-[10px] mt-1">Prix normal jusqu'à validation</p>
                   </div>
                 )}
 
@@ -217,7 +211,6 @@ const EventDetailPage = () => {
                   Réservez votre place avant rupture du stock.
                 </p>
 
-                {/* Bouton acheter */}
                 <button
                   onClick={handleAddToCart}
                   disabled={adding}
@@ -227,7 +220,7 @@ const EventDetailPage = () => {
                   {adding ? "Ajout..." : `Acheter — ${finalPrice} €`}
                 </button>
 
-                {/* Bouton demander réduction — visible si connecté et pas encore approuvé/pending */}
+                {/* ✅ Bouton tarif réduit — affiché si connecté, pas approuvé, pas pending */}
                 {user && discountStatus !== "approved" && discountStatus !== "pending" && (
                   <button
                     onClick={() => setShowDiscountModal(true)}
@@ -237,7 +230,6 @@ const EventDetailPage = () => {
                   </button>
                 )}
 
-                {/* Info non connecté */}
                 {!user && (
                   <p className="text-white/30 text-xs text-center">
                     Connectez-vous pour bénéficier de tarifs réduits
