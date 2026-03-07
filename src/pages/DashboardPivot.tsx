@@ -7,26 +7,22 @@ export default function DashboardPivot() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (loading) return; // ⏳ On attend la fin du chargement
-
+    if (loading) return;
     if (!user) {
-      // ❌ Pas connecté → accueil
       navigate("/", { replace: true });
       return;
     }
 
-    // 🔐 Détection admin
     const isAdmin =
       profile?.role === "admin" ||
       profile?.role === "superadmin" ||
       profile?.is_admin === true;
 
     if (isAdmin) {
-      // 🛠️ Admin → Dashboard Admin
       navigate("/admin/dashboard", { replace: true });
     } else {
-      // 👤 Utilisateur normal → Profil
-      navigate("/profile", { replace: true });
+      // ✅ Client → dashboard client (pas /profile)
+      navigate("/dashboard/user", { replace: true });
     }
   }, [user, profile, loading, navigate]);
 
