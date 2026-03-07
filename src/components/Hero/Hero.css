@@ -1,6 +1,7 @@
 .hero-section {
   width: 100%;
-  padding: 80px 16px 40px 16px;
+  /* ✅ padding-top suffisant pour passer sous la navbar (~70px) */
+  padding: 120px 16px 48px 16px;
   display: flex;
   justify-content: center;
   background: transparent;
@@ -9,7 +10,7 @@
 
 @media (min-width: 768px) {
   .hero-section {
-    padding: 100px 20px 60px 20px;
+    padding: 140px 20px 80px 20px;
   }
 }
 
@@ -20,7 +21,6 @@
   overflow: visible !important;
 }
 
-/* BADGE */
 .badge-official {
   display: inline-flex;
   align-items: center;
@@ -29,7 +29,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 8px 16px;
   border-radius: 50px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 @media (min-width: 768px) {
@@ -50,18 +50,16 @@
 @media (min-width: 768px) {
   .badge-text {
     font-size: 14px;
-    letter-spacing: 2.5px;
   }
 }
 
-/* TITRE */
 .hero-main-title {
   font-family: 'Poppins', sans-serif;
   font-weight: 950;
   font-style: italic;
   text-transform: uppercase;
-  line-height: 1.1;
-  margin-bottom: 24px;
+  line-height: 1.05;
+  margin-bottom: 20px;
   overflow: visible !important;
 }
 
@@ -73,16 +71,12 @@
 
 .line-white {
   color: #ffffff;
-  /* ✅ Réduit sur mobile */
-  font-size: clamp(2rem, 8vw, 5.5rem);
+  font-size: clamp(2.2rem, 10vw, 5.5rem);
   display: inline-block;
-  padding-right: 0.15em;
-  margin-right: -0.15em;
 }
 
 .line-gradient {
-  /* ✅ Réduit sur mobile */
-  font-size: clamp(2.2rem, 9vw, 7rem);
+  font-size: clamp(2.4rem, 11vw, 7rem);
   background: linear-gradient(90deg, #f3cc4d 0%, #ff4d6d 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -93,12 +87,11 @@
   overflow: visible !important;
 }
 
-/* DESCRIPTION ET BOUTON */
 .hero-content-footer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
 }
 
 @media (min-width: 768px) {
@@ -109,10 +102,9 @@
 
 .hero-tagline {
   color: rgba(255, 255, 255, 0.6);
-  /* ✅ Réduit sur mobile */
-  font-size: clamp(0.85rem, 2.5vw, 1.6rem);
+  font-size: clamp(0.85rem, 3vw, 1.4rem);
   font-style: italic;
-  max-width: 750px;
+  max-width: 600px;
   line-height: 1.6;
   padding: 0 8px;
 }
@@ -120,11 +112,10 @@
 .hero-cta-btn {
   background-color: #ffffff;
   color: #1a0525;
-  /* ✅ Padding réduit sur mobile */
-  padding: 14px 36px;
+  padding: 14px 40px;
   border-radius: 50px;
   font-weight: 900;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   text-decoration: none;
   transition: all 0.3s ease;
   box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
