@@ -65,10 +65,24 @@ const AdminDashboardPage = () => {
   const fetchDiscountRequests = useCallback(async () => {
     try {
       setDiscountLoading(true);
-      const { data, error } = await supabase.functions.invoke("get-discount-requests", {
-        method: "GET",
-      });
-      if (error) throw error;
+      // ✅ Récupérer le token manuellement
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Token manquant");
+
+      const res = await fetch(
+        "https://vnijdjjzgruujvagrihu.supabase.co/functions/v1/get-discount-requests",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur serveur");
+
       setDiscountRequests(
         (data?.requests || []).map((r: any) => ({
           ...r,
@@ -99,13 +113,24 @@ const AdminDashboardPage = () => {
   const handleDiscountAction = async (userId: string, action: "approved" | "rejected") => {
     setActionLoading(userId);
     try {
-      const { error } = await supabase.functions.invoke("get-discount-requests", {
-        method: "PATCH",
-        body: { userId, action },
-      });
-      if (!error) {
-        setDiscountRequests(prev => prev.filter(r => r.id !== userId));
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Token manquant");
+
+      const res = await fetch(
+        "https://vnijdjjzgruujvagrihu.supabase.co/functions/v1/get-discount-requests",
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId, action }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur serveur");
+      setDiscountRequests(prev => prev.filter(r => r.id !== userId));
     } catch (err) {
       console.error("Erreur action:", err);
     } finally {
