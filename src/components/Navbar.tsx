@@ -84,13 +84,15 @@ const Navbar = () => {
                       <Settings size={14} /> Admin
                     </Link>
                   )}
-                  <Link to="/dashboard/user" className="flex items-center gap-2 text-sm font-bold text-white hover:text-amber-300 transition-colors">
+                  <Link to="/profile" className="flex items-center gap-2 text-sm font-bold text-white hover:text-amber-300 transition-colors">
                     <div className="w-8 h-8 bg-gradient-to-br from-amber-300 to-rose-500 rounded-full p-[2px]">
-                      <div className="w-full h-full bg-[#1a0525] rounded-full flex items-center justify-center">
-                        <User size={14} />
+                      <div className="w-full h-full bg-[#1a0525] rounded-full flex items-center justify-center text-xs font-black text-amber-300">
+                        {profile?.full_name
+                          ? profile.full_name.charAt(0).toUpperCase()
+                          : <User size={14} />}
                       </div>
                     </div>
-                    <span className="hidden lg:inline">Mon Compte</span>
+                    <span className="hidden lg:inline">{profile?.full_name || user?.email?.split("@")[0] || "Mon Compte"}</span>
                   </Link>
                   <button onClick={handleLogout} className="p-2 text-white/50 hover:text-rose-400 transition-colors">
                     <LogOut size={20} />
@@ -137,7 +139,19 @@ const Navbar = () => {
 
           {user ? (
             <>
-              <Link to="/dashboard/user" className="flex items-center gap-3 text-xl font-bold text-white uppercase tracking-widest">
+              {/* ✅ Nom du client affiché en haut du menu mobile */}
+              {profile?.full_name && (
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-300 to-rose-500 rounded-full flex items-center justify-center text-xl font-black text-[#1a0525]">
+                    {profile.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-black text-lg">{profile.full_name}</p>
+                    <p className="text-white/40 text-xs">{user.email}</p>
+                  </div>
+                </div>
+              )}
+              <Link to="/profile" className="flex items-center gap-3 text-xl font-bold text-white uppercase tracking-widest">
                 <LayoutDashboard size={24} /> Mon Compte
               </Link>
               <Link to="/cart" className="flex items-center gap-3 text-xl font-bold text-white uppercase tracking-widest">

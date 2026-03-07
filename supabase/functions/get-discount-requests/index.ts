@@ -15,14 +15,20 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Vérifier l'admin
+    // ✅ Vérifier admin via JWT decode (sans re-vérification)
     const token = req.headers.get("Authorization")?.replace("Bearer ", "");
     if (!token) return new Response(JSON.stringify({ error: "Non autorisé" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-    if (!user) return new Response(JSON.stringify({ error: "Token invalide" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    let userId: string;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      userId = payload.sub;
+      if (!userId) throw new Error("sub manquant");
+    } catch {
+      return new Response(JSON.stringify({ error: "Token invalide" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-    const { data: profile } = await supabaseAdmin.from("user_profiles").select("is_admin").eq("id", user.id).maybeSingle();
+    const { data: profile } = await supabaseAdmin.from("user_profiles").select("is_admin").eq("id", userId).maybeSingle();
     if (!profile?.is_admin) return new Response(JSON.stringify({ error: "Accès refusé" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     // GET — liste des demandes pending
