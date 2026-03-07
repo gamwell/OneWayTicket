@@ -292,7 +292,7 @@ const AdminDashboardPage = () => {
                 <div className="w-12 h-12 rounded-2xl bg-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30"><BarChart3 /></div>
                 <div><p className="font-black text-white uppercase italic">Statistiques</p><p className="text-white/40 text-xs">Ventes & analytics</p></div>
               </Link>
-              <Link to="/admin/tools" className="bg-fuchsia-500/10 border border-fuchsia-500/20 p-6 rounded-3xl flex items-center gap-5 hover:bg-fuchsia-500/20 transition-all">
+              <Link to="/admin/checkin-dashboard" className="bg-fuchsia-500/10 border border-fuchsia-500/20 p-6 rounded-3xl flex items-center gap-5 hover:bg-fuchsia-500/20 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-fuchsia-500 flex items-center justify-center text-white shadow-lg shadow-fuchsia-500/30"><Ticket /></div>
                 <div><p className="font-black text-white uppercase italic">Tous les billets</p><p className="text-white/40 text-xs">Consulter, rembourser</p></div>
               </Link>
