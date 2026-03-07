@@ -24,6 +24,7 @@ type DiscountRequest = {
   discount_justification: string;
   discount_requested_at: string;
   discount_status: string;
+  documentSignedUrl?: string | null;
 };
 
 const AdminDashboardPage = () => {
@@ -72,6 +73,7 @@ const AdminDashboardPage = () => {
         (data?.requests || []).map((r: any) => ({
           ...r,
           profile_type_name: r.profile_types?.name || "Inconnu",
+          documentSignedUrl: r.documentSignedUrl || null,
         }))
       );
     } catch (err) {
@@ -196,8 +198,31 @@ const AdminDashboardPage = () => {
                           <p className="text-white/40 text-xs mb-2">{req.email}</p>
                           {req.discount_justification && (
                             <div className="bg-white/5 rounded-xl p-3 mt-2">
-                              <p className="text-white/30 text-[10px] uppercase tracking-wider mb-1">Justificatif fourni</p>
+                              <p className="text-white/30 text-[10px] uppercase tracking-wider mb-1">Justificatif texte</p>
                               <p className="text-white/70 text-sm">{req.discount_justification}</p>
+                            </div>
+                          )}
+                          {req.documentSignedUrl && (
+                            <div className="mt-2">
+                              <p className="text-white/30 text-[10px] uppercase tracking-wider mb-2">Document joint</p>
+                              {req.documentSignedUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i) ? (
+                                <a href={req.documentSignedUrl} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={req.documentSignedUrl}
+                                    alt="Justificatif"
+                                    className="max-h-40 rounded-xl border border-white/10 hover:opacity-80 transition-opacity cursor-pointer"
+                                  />
+                                </a>
+                              ) : (
+                                <a
+                                  href={req.documentSignedUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white/70 text-sm hover:bg-white/20 transition-all"
+                                >
+                                  📄 Voir le document PDF
+                                </a>
+                              )}
                             </div>
                           )}
                         </div>

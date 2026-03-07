@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
-import { X, Tag, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { X, Tag, Clock, AlertTriangle, Upload, FileCheck, Loader2 } from "lucide-react";
 
 interface Props {
   userId: string;
@@ -16,11 +16,13 @@ const PROFILE_TYPES = [
 export default function DiscountRequestModal({ userId, onClose, onDiscountApplied }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [justification, setJustification] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [existingStatus, setExistingStatus] = useState<string | null>(null);
 
-  // Vérifie si une demande existe déjà
   const checkExisting = async (profileTypeId: number) => {
     const { data } = await supabase
       .from("user_profiles")
@@ -29,20 +31,13 @@ export default function DiscountRequestModal({ userId, onClose, onDiscountApplie
       .maybeSingle();
 
     if (data?.discount_status === "approved" && data?.profile_type_id === profileTypeId) {
-      // Déjà approuvé → applique directement
       const type = PROFILE_TYPES.find(p => p.id === profileTypeId);
       if (type) onDiscountApplied(type.name, type.rate);
       onClose();
       return true;
     }
-    if (data?.discount_status === "pending") {
-      setExistingStatus("pending");
-      return true;
-    }
-    if (data?.discount_status === "rejected") {
-      setExistingStatus("rejected");
-      return true;
-    }
+    if (data?.discount_status === "pending") { setExistingStatus("pending"); return true; }
+    if (data?.discount_status === "rejected") { setExistingStatus("rejected"); return true; }
     setExistingStatus(null);
     return false;
   };
@@ -53,17 +48,68 @@ export default function DiscountRequestModal({ userId, onClose, onDiscountApplie
     await checkExisting(id);
   };
 
-  const handleSubmit = async () => {
-    if (!selected || !justification.trim()) return;
-    setLoading(true);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
 
+    // Max 5MB
+    if (f.size > 5 * 1024 * 1024) {
+      alert("Fichier trop volumineux (max 5MB)");
+      return;
+    }
+
+    setFile(f);
+
+    // Aperçu si image
+    if (f.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setFilePreview(ev.target?.result as string);
+      reader.readAsDataURL(f);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const uploadFile = async (): Promise<string | null> => {
+    if (!file) return null;
+    setUploading(true);
     try {
+      const ext = file.name.split(".").pop();
+      const path = `${userId}/${Date.now()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("justificatifs")
+        .upload(path, file, { upsert: true });
+
+      if (error) throw error;
+      return path;
+    } catch (err) {
+      console.error("Erreur upload:", err);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!selected) return;
+    if (!justification.trim() && !file) {
+      alert("Veuillez fournir un justificatif (texte ou fichier)");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Upload fichier si présent
+      const documentUrl = file ? await uploadFile() : null;
+
       const { error } = await supabase
         .from("user_profiles")
         .update({
           profile_type_id: selected,
           discount_status: "pending",
-          discount_justification: justification.trim(),
+          discount_justification: justification.trim() || null,
+          document_url: documentUrl,
           discount_requested_at: new Date().toISOString(),
         })
         .eq("id", userId);
@@ -78,29 +124,22 @@ export default function DiscountRequestModal({ userId, onClose, onDiscountApplie
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-[#1a0525] border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl">
+      <div className="relative bg-[#1a0525] border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors">
           <X size={20} />
         </button>
 
         {sent ? (
-          /* ✅ Confirmation envoi */
           <div className="text-center py-4">
             <Clock className="w-12 h-12 text-amber-400 mx-auto mb-4" />
             <h2 className="text-xl font-black uppercase italic mb-2">Demande envoyée !</h2>
             <p className="text-white/50 text-sm mb-6">
-              Votre demande de tarif réduit est en cours de validation par notre équipe. Une fois approuvée, la réduction sera automatiquement appliquée à vos prochains achats.
+              Votre demande est en cours de validation. Une fois approuvée, la réduction sera appliquée automatiquement.
             </p>
-            <p className="text-white/30 text-xs mb-6">
-              Délai de traitement : 24–48h ouvrées
-            </p>
-            <button
-              onClick={onClose}
-              className="w-full py-3 bg-amber-400 text-black font-black uppercase rounded-2xl hover:bg-amber-300 transition-all"
-            >
+            <p className="text-white/30 text-xs mb-6">Délai : 24–48h ouvrées</p>
+            <button onClick={onClose} className="w-full py-3 bg-amber-400 text-black font-black uppercase rounded-2xl hover:bg-amber-300 transition-all">
               Continuer sans réduction
             </button>
           </div>
@@ -116,64 +155,92 @@ export default function DiscountRequestModal({ userId, onClose, onDiscountApplie
               </div>
             </div>
 
-            {/* Choix du profil */}
+            {/* Choix profil */}
             <div className="grid grid-cols-2 gap-3 mb-6">
               {PROFILE_TYPES.map((type) => (
                 <button
                   key={type.id}
                   onClick={() => handleSelectType(type.id)}
                   className={`p-4 rounded-2xl border text-left transition-all ${
-                    selected === type.id
-                      ? type.color + " scale-[1.02]"
-                      : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"
+                    selected === type.id ? type.color + " scale-[1.02]" : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"
                   }`}
                 >
                   <p className="font-black text-sm">{type.name}</p>
-                  <p className={`text-xl font-black mt-1 ${selected === type.id ? "" : "text-white/30"}`}>
-                    {type.label}
-                  </p>
+                  <p className={`text-xl font-black mt-1 ${selected === type.id ? "" : "text-white/30"}`}>{type.label}</p>
                 </button>
               ))}
             </div>
 
-            {/* État de la demande existante */}
+            {/* Statuts existants */}
             {existingStatus === "pending" && (
               <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl mb-4">
                 <Clock className="text-amber-400 flex-shrink-0" size={18} />
-                <p className="text-amber-300 text-sm font-bold">
-                  Demande déjà en attente de validation. Continuez votre achat au tarif normal.
-                </p>
+                <p className="text-amber-300 text-sm font-bold">Demande déjà en attente de validation.</p>
               </div>
             )}
-
             {existingStatus === "rejected" && (
               <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl mb-4">
                 <AlertTriangle className="text-rose-400 flex-shrink-0" size={18} />
-                <p className="text-rose-300 text-sm font-bold">
-                  Votre dernière demande a été refusée. Contactez-nous si vous pensez qu'il s'agit d'une erreur.
-                </p>
+                <p className="text-rose-300 text-sm font-bold">Demande refusée. Contactez-nous pour plus d'informations.</p>
               </div>
             )}
 
-            {/* Justificatif */}
+            {/* Formulaire justificatif */}
             {selected && !existingStatus && (
-              <div className="mb-6">
-                <label className="text-white/50 text-xs uppercase tracking-wider font-bold mb-2 block">
-                  Justificatif *
-                </label>
-                <textarea
-                  value={justification}
-                  onChange={(e) => setJustification(e.target.value)}
-                  placeholder={
-                    selected === 2
-                      ? "Ex : Carte étudiant 2024-2025, université Paris-Sorbonne, n° 123456..."
-                      : "Ex : CNI n° 123456789, né(e) le 01/01/1958..."
-                  }
-                  rows={3}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:border-teal-400/50 text-sm resize-none"
-                />
-                <p className="text-white/20 text-xs mt-1">
-                  ⚠️ Ces informations seront vérifiées par notre équipe. Fausse déclaration = annulation de la réduction.
+              <div className="space-y-4 mb-6">
+
+                {/* Upload fichier */}
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-wider font-bold mb-2 block">
+                    Document justificatif
+                  </label>
+
+                  <label className={`w-full flex flex-col items-center justify-center gap-3 p-5 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
+                    file ? "border-teal-500/50 bg-teal-500/5" : "border-white/10 bg-white/5 hover:border-white/20"
+                  }`}>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    {file ? (
+                      <>
+                        {filePreview ? (
+                          <img src={filePreview} alt="Aperçu" className="w-full max-h-32 object-contain rounded-xl" />
+                        ) : (
+                          <FileCheck className="text-teal-400" size={32} />
+                        )}
+                        <p className="text-teal-300 text-sm font-bold truncate max-w-full">{file.name}</p>
+                        <p className="text-white/30 text-xs">{(file.size / 1024).toFixed(0)} KB — Cliquez pour changer</p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="text-white/30" size={32} />
+                        <p className="text-white/50 text-sm font-bold">Glissez ou cliquez pour uploader</p>
+                        <p className="text-white/20 text-xs">Photo carte étudiant, CNI, justificatif PDF — Max 5MB</p>
+                      </>
+                    )}
+                  </label>
+                </div>
+
+                {/* Description optionnelle */}
+                <div>
+                  <label className="text-white/50 text-xs uppercase tracking-wider font-bold mb-2 block">
+                    Description (optionnel)
+                  </label>
+                  <textarea
+                    value={justification}
+                    onChange={(e) => setJustification(e.target.value)}
+                    placeholder={selected === 2 ? "Ex: Carte étudiant 2024-2025, Université Paris..." : "Ex: CNI né(e) le 01/01/1958..."}
+                    rows={2}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-white/20 focus:outline-none focus:border-teal-400/50 text-sm resize-none"
+                  />
+                </div>
+
+                <p className="text-white/20 text-xs">
+                  ⚠️ Fausse déclaration = annulation immédiate de la réduction.
                 </p>
               </div>
             )}
@@ -183,10 +250,14 @@ export default function DiscountRequestModal({ userId, onClose, onDiscountApplie
               {selected && !existingStatus && (
                 <button
                   onClick={handleSubmit}
-                  disabled={!justification.trim() || loading}
-                  className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-white font-black uppercase rounded-2xl transition-all disabled:opacity-40"
+                  disabled={(!justification.trim() && !file) || loading || uploading}
+                  className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-white font-black uppercase rounded-2xl transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >
-                  {loading ? "Envoi..." : "Envoyer la demande"}
+                  {loading || uploading ? (
+                    <><Loader2 size={16} className="animate-spin" /> {uploading ? "Upload..." : "Envoi..."}</>
+                  ) : (
+                    "Envoyer la demande"
+                  )}
                 </button>
               )}
               <button
