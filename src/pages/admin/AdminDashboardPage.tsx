@@ -46,7 +46,6 @@ const AdminDashboardPage = () => {
       const { data: recentTickets } = await supabase.from("tickets").select("*, events(title)").order("created_at", { ascending: false }).limit(5);
       const { data: revenueData } = await supabase.from("tickets").select("final_price");
       const totalRevenue = revenueData?.reduce((acc, t) => acc + (t.final_price || 0), 0) || 0;
-
       setStats({
         totalEvents: eventsCount || 0,
         totalTickets: ticketsCount || 0,
@@ -61,28 +60,20 @@ const AdminDashboardPage = () => {
     }
   }, []);
 
+  // ✅ Via Edge Function — contourne les RLS
   const fetchDiscountRequests = useCallback(async () => {
     try {
       setDiscountLoading(true);
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select(`
-          id, email, full_name,
-          profile_type_id,
-          profile_types(name),
-          discount_justification,
-          discount_requested_at,
-          discount_status
-        `)
-        .eq("discount_status", "pending")
-        .order("discount_requested_at", { ascending: true });
-
-      if (!error && data) {
-        setDiscountRequests(data.map((r: any) => ({
+      const { data, error } = await supabase.functions.invoke("get-discount-requests", {
+        method: "GET",
+      });
+      if (error) throw error;
+      setDiscountRequests(
+        (data?.requests || []).map((r: any) => ({
           ...r,
           profile_type_name: r.profile_types?.name || "Inconnu",
-        })));
-      }
+        }))
+      );
     } catch (err) {
       console.error("Erreur demandes réduction:", err);
     } finally {
@@ -92,24 +83,24 @@ const AdminDashboardPage = () => {
 
   useEffect(() => { fetchStats(); fetchDiscountRequests(); }, [fetchStats, fetchDiscountRequests]);
 
-  // Temps réel
+  // Temps réel tickets
   useEffect(() => {
     const channel = supabase
-      .channel('admin-dashboard-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => fetchStats())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => fetchDiscountRequests())
+      .channel("admin-dashboard-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => fetchStats())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "user_profiles" }, () => fetchDiscountRequests())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchStats, fetchDiscountRequests]);
 
-  const handleDiscountAction = async (userId: string, action: 'approved' | 'rejected') => {
+  // ✅ Valider/Refuser via Edge Function
+  const handleDiscountAction = async (userId: string, action: "approved" | "rejected") => {
     setActionLoading(userId);
     try {
-      const { error } = await supabase
-        .from("user_profiles")
-        .update({ discount_status: action })
-        .eq("id", userId);
-
+      const { error } = await supabase.functions.invoke("get-discount-requests", {
+        method: "PATCH",
+        body: { userId, action },
+      });
       if (!error) {
         setDiscountRequests(prev => prev.filter(r => r.id !== userId));
       }
@@ -153,7 +144,7 @@ const AdminDashboardPage = () => {
           ))}
         </div>
 
-        {/* ✅ SECTION DEMANDES DE RÉDUCTION */}
+        {/* DEMANDES DE RÉDUCTION */}
         <div className="mb-10">
           <button
             onClick={() => setShowDiscounts(v => !v)}
@@ -163,9 +154,7 @@ const AdminDashboardPage = () => {
               <div className="w-8 h-8 bg-teal-500 rounded-xl flex items-center justify-center">
                 <UserCheck size={16} className="text-white" />
               </div>
-              <span className="font-black uppercase tracking-widest text-sm">
-                Demandes de réduction
-              </span>
+              <span className="font-black uppercase tracking-widest text-sm">Demandes de réduction</span>
               {discountRequests.length > 0 && (
                 <span className="px-2 py-0.5 bg-rose-500 text-white text-xs font-black rounded-full">
                   {discountRequests.length}
@@ -212,18 +201,16 @@ const AdminDashboardPage = () => {
                             </div>
                           )}
                         </div>
-
-                        {/* Actions */}
                         <div className="flex gap-3 flex-shrink-0">
                           <button
-                            onClick={() => handleDiscountAction(req.id, 'approved')}
+                            onClick={() => handleDiscountAction(req.id, "approved")}
                             disabled={actionLoading === req.id}
                             className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl transition-all disabled:opacity-50 text-sm"
                           >
                             <CheckCircle size={16} /> Valider
                           </button>
                           <button
-                            onClick={() => handleDiscountAction(req.id, 'rejected')}
+                            onClick={() => handleDiscountAction(req.id, "rejected")}
                             disabled={actionLoading === req.id}
                             className="flex items-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-400 font-bold rounded-xl transition-all disabled:opacity-50 text-sm"
                           >
@@ -240,42 +227,28 @@ const AdminDashboardPage = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* ACTIONS RAPIDES */}
           <div className="lg:col-span-2">
             <h2 className="text-lg font-bold uppercase tracking-widest text-white/50 mb-4">Actions prioritaires</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <Link to="/admin/events/new" className="bg-rose-500/10 border border-rose-500/20 p-6 rounded-3xl flex items-center gap-5 hover:bg-rose-500/20 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-rose-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/30"><Plus /></div>
-                <div>
-                  <p className="font-black text-white uppercase italic">Créer un événement</p>
-                  <p className="text-white/40 text-xs">Ajouter une soirée</p>
-                </div>
+                <div><p className="font-black text-white uppercase italic">Créer un événement</p><p className="text-white/40 text-xs">Ajouter une soirée</p></div>
               </Link>
               <Link to="/admin/scan" className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl flex items-center gap-5 hover:bg-amber-500/20 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/30"><Scan /></div>
-                <div>
-                  <p className="font-black text-white uppercase italic">Scanner les billets</p>
-                  <p className="text-white/40 text-xs">Valider les entrées</p>
-                </div>
+                <div><p className="font-black text-white uppercase italic">Scanner les billets</p><p className="text-white/40 text-xs">Valider les entrées</p></div>
               </Link>
               <Link to="/admin/checkin-dashboard" className="bg-cyan-500/10 border border-cyan-500/20 p-6 rounded-3xl flex items-center gap-5 hover:bg-cyan-500/20 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30"><BarChart3 /></div>
-                <div>
-                  <p className="font-black text-white uppercase italic">Statistiques</p>
-                  <p className="text-white/40 text-xs">Ventes & analytics</p>
-                </div>
+                <div><p className="font-black text-white uppercase italic">Statistiques</p><p className="text-white/40 text-xs">Ventes & analytics</p></div>
               </Link>
               <Link to="/admin/tools" className="bg-fuchsia-500/10 border border-fuchsia-500/20 p-6 rounded-3xl flex items-center gap-5 hover:bg-fuchsia-500/20 transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-fuchsia-500 flex items-center justify-center text-white shadow-lg shadow-fuchsia-500/30"><Ticket /></div>
-                <div>
-                  <p className="font-black text-white uppercase italic">Tous les billets</p>
-                  <p className="text-white/40 text-xs">Consulter, rembourser</p>
-                </div>
+                <div><p className="font-black text-white uppercase italic">Tous les billets</p><p className="text-white/40 text-xs">Consulter, rembourser</p></div>
               </Link>
             </div>
           </div>
 
-          {/* FLUX LIVE */}
           <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
             <h2 className="text-lg font-bold uppercase tracking-widest text-white/50 mb-6 flex items-center gap-2">
               <ShoppingBag size={20} /> Flux Live
