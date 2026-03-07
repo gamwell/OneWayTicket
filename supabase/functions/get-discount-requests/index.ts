@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     if (req.method === "GET") {
       const { data, error } = await supabaseAdmin
         .from("user_profiles")
-        .select("id, email, full_name, profile_type_id, profile_types(name), discount_justification, discount_requested_at, discount_status, document_url")
+        .select("id, email, full_name, profile_type_id, discount_justification, discount_requested_at, discount_status, document_url")
         .eq("discount_status", "pending")
         .order("discount_requested_at", { ascending: true });
 

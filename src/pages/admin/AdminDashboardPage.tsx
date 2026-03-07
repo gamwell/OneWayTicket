@@ -72,7 +72,7 @@ const AdminDashboardPage = () => {
       setDiscountRequests(
         (data?.requests || []).map((r: any) => ({
           ...r,
-          profile_type_name: r.profile_types?.name || "Inconnu",
+          profile_type_name: r.profile_type_id === 2 ? "Étudiant" : r.profile_type_id === 3 ? "Senior (+65 ans)" : "Inconnu",
           documentSignedUrl: r.documentSignedUrl || null,
         }))
       );
