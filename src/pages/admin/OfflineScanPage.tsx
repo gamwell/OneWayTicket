@@ -1,175 +1,142 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useAuth } from "../../contexts/AuthContext";
+import { Camera, Wifi, WifiOff, RefreshCw } from "lucide-react";
 
 const OFFLINE_QUEUE_KEY = "onewayticket_offline_scans";
 
 export default function OfflineScanPage() {
   const { user } = useAuth();
-
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [status, setStatus] = useState<"idle" | "saved" | "synced" | "error">("idle");
-  const [message, setMessage] = useState<string>("Scannez un billet");
+  const [message, setMessage] = useState("Appuyez sur Démarrer pour scanner");
   const [queue, setQueue] = useState<string[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  // ------------------------------------------------------------
-  // 🔥 Charger la queue + écouter le statut réseau
-  // ------------------------------------------------------------
   useEffect(() => {
     const stored = localStorage.getItem(OFFLINE_QUEUE_KEY);
     setQueue(stored ? JSON.parse(stored) : []);
-
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
+    window.addEventListener("online", () => setIsOnline(true));
+    window.addEventListener("offline", () => setIsOnline(false));
   }, []);
 
-  // ------------------------------------------------------------
-  // 🔥 INITIALISATION DU SCANNER html5-qrcode
-  // ------------------------------------------------------------
   useEffect(() => {
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader-offline",
-      { fps: 10, qrbox: 250 },
-      false
-    );
-
-    scanner.render(
-      (result) => handleScan(result),
-      (error) => console.warn("QR scan error:", error)
-    );
-
     return () => {
-      scanner.clear().catch(console.error);
+      if (scannerRef.current) scannerRef.current.stop().catch(console.error);
     };
   }, []);
+
+  const startScanner = async () => {
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader-offline");
+      scannerRef.current = html5QrCode;
+      // ✅ Force caméra arrière
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (result) => handleScan(result),
+        (error) => console.warn(error)
+      );
+      setScanning(true);
+      setMessage("Pointez vers un QR code");
+    } catch (err) {
+      setStatus("error");
+      setMessage("Impossible d'accéder à la caméra");
+    }
+  };
+
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(console.error);
+      scannerRef.current = null;
+    }
+    setScanning(false);
+  };
 
   const saveQueue = (newQueue: string[]) => {
     setQueue(newQueue);
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(newQueue));
   };
 
-  // ------------------------------------------------------------
-  // 🔥 SCAN HORS‑LIGNE : stockage local
-  // ------------------------------------------------------------
   const handleScan = (data: string | null) => {
     if (!data) return;
-
     try {
-      const parsed = JSON.parse(data);
-      const ticketId = parsed.id as string;
+      let ticketId = data;
+      try { ticketId = JSON.parse(data).id || data; } catch { }
 
-      if (!ticketId) throw new Error("Invalid QR");
-
-      // éviter les doublons
       if (queue.includes(ticketId)) {
         setStatus("error");
-        setMessage(`Billet déjà scanné (#${ticketId})`);
+        setMessage("Billet déjà scanné");
         return;
       }
-
-      const updated = [...queue, ticketId];
-      saveQueue(updated);
-
+      saveQueue([...queue, ticketId]);
       setStatus("saved");
-      setMessage(`Billet enregistré hors-ligne (#${ticketId})`);
+      setMessage(`Enregistré hors-ligne (${ticketId.slice(0, 8)}...)`);
     } catch {
       setStatus("error");
       setMessage("QR Code invalide");
     }
   };
 
-  // ------------------------------------------------------------
-  // 🔥 SYNCHRONISATION ONLINE
-  // ------------------------------------------------------------
   const syncNow = useCallback(async () => {
-    if (!isOnline) {
-      setStatus("error");
-      setMessage("Pas de connexion — impossible de synchroniser");
-      return;
-    }
-
-    if (queue.length === 0) {
-      setStatus("idle");
-      setMessage("Aucun scan à synchroniser");
-      return;
-    }
-
+    if (!isOnline || queue.length === 0) return;
     try {
       for (const id of queue) {
-        const { error: updateErr } = await supabase
-          .from("tickets")
-          .update({ checked_in: true })
-          .eq("id", id);
-
-        if (updateErr) throw updateErr;
-
-        const { error: logErr } = await supabase.from("scan_logs").insert({
-          ticket_id: id,
-          scanned_by: user?.id || null,
-        });
-
-        if (logErr) throw logErr;
+        await supabase.from("tickets").update({ checked_in: true }).eq("id", id);
+        await supabase.from("scan_logs").insert({ ticket_id: id, scanned_by: user?.id || null });
       }
-
       saveQueue([]);
       setStatus("synced");
-      setMessage("Tous les scans hors-ligne ont été synchronisés");
-    } catch (err) {
-      console.error(err);
+      setMessage("Tous les scans synchronisés ✅");
+    } catch {
       setStatus("error");
-      setMessage("Erreur lors de la synchronisation");
+      setMessage("Erreur de synchronisation");
     }
   }, [isOnline, queue, user]);
 
-  // ------------------------------------------------------------
-  // 🔥 UI
-  // ------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
-      <div className="p-4 text-center border-b border-white/10">
-        <h1 className="text-xl font-bold">Mode Scan Hors‑ligne</h1>
-        <p className="text-xs mt-1">
-          Statut réseau :{" "}
-          <span className={isOnline ? "text-green-400" : "text-red-400"}>
-            {isOnline ? "En ligne" : "Hors‑ligne"}
-          </span>
-        </p>
-        <p className="text-[10px] text-white/60 mt-1">
-          Les billets scannés sont enregistrés localement et synchronisés plus tard.
-        </p>
+    <div className="min-h-screen bg-[#1a0525] text-white flex flex-col items-center pt-24 px-6 pb-16">
+      <div className="flex items-center gap-3 mb-8">
+        {isOnline ? <Wifi className="text-emerald-400" /> : <WifiOff className="text-rose-400" />}
+        <h1 className="text-3xl font-black uppercase italic text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-300">
+          Scan Hors-ligne
+        </h1>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-6">
-
-        {/* Scanner html5-qrcode */}
-        <div className="w-full max-w-xs rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg">
-          <div id="qr-reader-offline" style={{ width: "100%" }} />
-        </div>
-
-        <div className="text-center">
-          <p className="text-lg font-bold mb-2">{message}</p>
-          <p className="text-xs text-white/60">
-            Scans en attente de synchro : {queue.length}
-          </p>
-        </div>
-
-        <button
-          onClick={syncNow}
-          className="mt-4 px-6 py-3 rounded-full bg-cyan-500 text-black font-bold text-sm disabled:bg-gray-500"
-          disabled={!isOnline}
-        >
-          Synchroniser maintenant
-        </button>
+      <div className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl mb-6 bg-black min-h-[200px] flex items-center justify-center">
+        <div id="qr-reader-offline" style={{ width: "100%" }} />
+        {!scanning && <Camera size={48} className="text-white/20" />}
       </div>
+
+      <button
+        onClick={scanning ? stopScanner : startScanner}
+        className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest mb-6 transition-all ${
+          scanning ? "bg-rose-500 text-white" : "bg-amber-400 text-black"
+        }`}
+      >
+        {scanning ? "Arrêter" : "Démarrer la caméra"}
+      </button>
+
+      <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-2xl p-4 mb-4 text-center">
+        <p className="text-white/50 text-xs uppercase tracking-wider mb-1">File d'attente</p>
+        <p className="text-3xl font-black text-amber-400">{queue.length}</p>
+        <p className="text-white/30 text-xs">scans en attente</p>
+      </div>
+
+      <p className={`mb-4 font-bold ${status === "error" ? "text-rose-400" : status === "synced" ? "text-emerald-400" : "text-amber-400"}`}>
+        {message}
+      </p>
+
+      <button
+        onClick={syncNow}
+        disabled={!isOnline || queue.length === 0}
+        className="flex items-center gap-2 px-8 py-4 bg-cyan-500 text-black font-black uppercase rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-cyan-400 transition-all"
+      >
+        <RefreshCw size={18} />
+        Synchroniser ({queue.length})
+      </button>
     </div>
   );
 }

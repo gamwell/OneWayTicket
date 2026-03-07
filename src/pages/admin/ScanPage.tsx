@@ -1,186 +1,190 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { useAuth } from "../../contexts/AuthContext";
+import { CheckCircle, XCircle, Loader2, Camera } from "lucide-react";
 
 export default function ScanPage() {
   const { user } = useAuth();
-
   const [status, setStatus] = useState<"idle" | "valid" | "invalid" | "pending">("idle");
-  const [message, setMessage] = useState("Scannez un billet pour commencer");
+  const [message, setMessage] = useState("Appuyez sur Démarrer pour scanner");
   const [lastScannedTicket, setLastScannedTicket] = useState<string | null>(null);
-
-  // ⚡ Anti-spam scan (évite les scans multiples)
+  const [scanning, setScanning] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanLock = useRef(false);
 
-  // ------------------------------------------------------------
-  // 🔥 INITIALISATION DU SCANNER html5-qrcode
-  // ------------------------------------------------------------
+  const startScanner = async () => {
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      scannerRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        // ✅ Force la caméra arrière sur mobile
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+        },
+        (result) => handleScan(result),
+        (error) => console.warn("QR scan error:", error)
+      );
+
+      setScanning(true);
+      setMessage("Pointez la caméra vers un QR code");
+    } catch (err) {
+      console.error("Erreur démarrage caméra:", err);
+      setStatus("invalid");
+      setMessage("Impossible d'accéder à la caméra. Vérifiez les permissions.");
+    }
+  };
+
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(console.error);
+      scannerRef.current = null;
+    }
+    setScanning(false);
+    setMessage("Scanner arrêté");
+  };
+
   useEffect(() => {
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { fps: 10, qrbox: 250 },
-      false
-    );
-
-    scanner.render(
-      (result) => handleScan(result),
-      (error) => console.warn("QR scan error:", error)
-    );
-
     return () => {
-      scanner.clear().catch(console.error);
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(console.error);
+      }
     };
   }, []);
 
-  // ------------------------------------------------------------
-  // 🔥 SYNCHRONISATION ENTRE SCANNERS (INSERT scan_logs)
-  // ------------------------------------------------------------
-  useEffect(() => {
-    const channel = supabase
-      .channel("realtime-scans")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "scan_logs" },
-        (payload) => {
-          const scannedTicket = payload.new.ticket_id;
-          if (lastScannedTicket && scannedTicket !== lastScannedTicket) {
-            setStatus("invalid");
-            setMessage("Billet déjà validé sur un autre scanner");
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [lastScannedTicket]);
-
-  // ------------------------------------------------------------
-  // 🔥 SYNCHRONISATION ENTRE SCANNERS (UPDATE tickets)
-  // ------------------------------------------------------------
+  // Realtime sync
   useEffect(() => {
     const channel = supabase
       .channel("scan-sync")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "tickets" },
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tickets" },
         (payload) => {
-          if (
-            lastScannedTicket &&
-            payload.new.id === lastScannedTicket &&
-            payload.new.checked_in
-          ) {
+          if (lastScannedTicket && payload.new.id === lastScannedTicket && payload.new.checked_in) {
             setStatus("invalid");
             setMessage("Billet déjà validé ailleurs");
           }
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      ).subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [lastScannedTicket]);
 
-  // ------------------------------------------------------------
-  // 🔥 LOGIQUE DE SCAN
-  // ------------------------------------------------------------
   const handleScan = async (data: string | null) => {
-    if (!data) return;
-
-    // ⚡ Anti-spam
-    if (scanLock.current) return;
+    if (!data || scanLock.current) return;
     scanLock.current = true;
-    setTimeout(() => (scanLock.current = false), 1000);
+    setTimeout(() => (scanLock.current = false), 3000);
 
     setStatus("pending");
     setMessage("Vérification du billet...");
 
     try {
-      const parsed = JSON.parse(data);
-      const ticketId = parsed.id;
+      // Supporte QR code = UUID direct ou JSON avec id
+      let ticketId = data;
+      try {
+        const parsed = JSON.parse(data);
+        ticketId = parsed.id || data;
+      } catch {
+        ticketId = data; // QR code = UUID direct
+      }
 
       setLastScannedTicket(ticketId);
 
-      // Vérifier si le ticket existe
       const { data: ticket, error } = await supabase
         .from("tickets")
         .select("*")
-        .eq("id", ticketId)
+        .or(`id.eq.${ticketId},qr_code_hash.eq.${ticketId}`)
         .maybeSingle();
 
       if (error || !ticket) {
         setStatus("invalid");
         setMessage("Billet introuvable");
+        resetAfterDelay();
         return;
       }
 
-      // Vérifier si déjà validé
       if (ticket.checked_in) {
         setStatus("invalid");
-        setMessage("Billet déjà validé");
+        setMessage("Billet déjà utilisé !");
+        resetAfterDelay();
         return;
       }
 
-      // Valider le billet
-      const { error: updateErr } = await supabase
-        .from("tickets")
-        .update({ checked_in: true })
-        .eq("id", ticketId);
-
-      if (updateErr) {
-        setStatus("invalid");
-        setMessage("Erreur lors de la validation");
-        return;
-      }
-
-      // Ajouter un log
-      await supabase.from("scan_logs").insert({
-        ticket_id: ticketId,
-        scanned_by: user?.id || null,
-      });
+      await supabase.from("tickets").update({ checked_in: true }).eq("id", ticket.id);
+      await supabase.from("scan_logs").insert({ ticket_id: ticket.id, scanned_by: user?.id || null });
 
       setStatus("valid");
-      setMessage("Billet validé — entrée autorisée");
-
-      // Reset après 3 secondes
-      setTimeout(() => {
-        setStatus("idle");
-        setMessage("Scannez un billet pour commencer");
-        setLastScannedTicket(null);
-      }, 3000);
+      setMessage("✅ Entrée autorisée !");
+      resetAfterDelay();
     } catch (err) {
-      console.error("Erreur lors du scan:", err);
+      console.error("Erreur scan:", err);
       setStatus("invalid");
       setMessage("QR Code invalide");
+      resetAfterDelay();
     }
   };
 
-  return (
-    <div className="p-6 text-center">
-      <h1 className="text-3xl font-bold mb-6">Scanner un billet</h1>
+  const resetAfterDelay = () => {
+    setTimeout(() => {
+      setStatus("idle");
+      setMessage("Pointez la caméra vers un QR code");
+      setLastScannedTicket(null);
+    }, 3000);
+  };
 
-      {/* 🔥 Conteneur du scanner html5-qrcode */}
-      <div className="max-w-sm mx-auto">
+  const bgColor = {
+    idle: "bg-[#1a0525]",
+    valid: "bg-emerald-900/40",
+    invalid: "bg-rose-900/40",
+    pending: "bg-amber-900/20",
+  }[status];
+
+  return (
+    <div className={`min-h-screen ${bgColor} text-white flex flex-col items-center pt-24 px-6 pb-16 transition-colors duration-500`}>
+      <h1 className="text-3xl font-black uppercase italic mb-8 text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-300">
+        Scanner un billet
+      </h1>
+
+      {/* Conteneur scanner */}
+      <div className="w-full max-w-sm rounded-3xl overflow-hidden border-2 border-white/10 shadow-2xl mb-6 bg-black">
         <div id="qr-reader" style={{ width: "100%" }} />
+        {!scanning && (
+          <div className="flex items-center justify-center h-48 text-white/20">
+            <Camera size={48} />
+          </div>
+        )}
       </div>
 
-      {/* 🔥 Messages dynamiques */}
-      <div className="mt-6">
-        {status === "valid" && (
-          <p className="text-green-400 font-bold text-xl">✔ {message}</p>
-        )}
-        {status === "invalid" && (
-          <p className="text-red-400 font-bold text-xl">✖ {message}</p>
-        )}
-        {status === "pending" && (
-          <p className="text-yellow-300 font-bold text-xl">⏳ {message}</p>
-        )}
-        {status === "idle" && (
-          <p className="text-gray-300 text-lg">{message}</p>
-        )}
+      {/* Bouton start/stop */}
+      <button
+        onClick={scanning ? stopScanner : startScanner}
+        className={`px-8 py-4 rounded-2xl font-black uppercase tracking-widest transition-all mb-8 ${
+          scanning
+            ? "bg-rose-500 hover:bg-rose-400 text-white"
+            : "bg-amber-400 hover:bg-amber-300 text-black"
+        }`}
+      >
+        {scanning ? "Arrêter" : "Démarrer la caméra"}
+      </button>
+
+      {/* Feedback */}
+      <div className={`w-full max-w-sm p-6 rounded-3xl text-center border transition-all ${
+        status === "valid" ? "border-emerald-500/50 bg-emerald-500/10" :
+        status === "invalid" ? "border-rose-500/50 bg-rose-500/10" :
+        status === "pending" ? "border-amber-500/50 bg-amber-500/10" :
+        "border-white/10 bg-white/5"
+      }`}>
+        {status === "valid" && <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3" />}
+        {status === "invalid" && <XCircle className="w-12 h-12 text-rose-400 mx-auto mb-3" />}
+        {status === "pending" && <Loader2 className="w-12 h-12 text-amber-400 mx-auto mb-3 animate-spin" />}
+        {status === "idle" && <Camera className="w-12 h-12 text-white/20 mx-auto mb-3" />}
+        <p className={`font-bold text-lg ${
+          status === "valid" ? "text-emerald-400" :
+          status === "invalid" ? "text-rose-400" :
+          status === "pending" ? "text-amber-400" :
+          "text-white/50"
+        }`}>{message}</p>
       </div>
     </div>
   );
