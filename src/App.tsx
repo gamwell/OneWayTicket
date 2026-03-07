@@ -16,9 +16,37 @@ import AdminRoute from "./components/AdminRoute";
 import PublicRoute from "./components/PublicRoute";
 import AutoLogout from "./components/AutoLogout";
 
-// ... (vos imports lazy restent identiques)
+// --- PAGES (Lazy Loading) ---
+const HomePage           = lazy(() => import("./pages/HomePage"));
+const EventsPage         = lazy(() => import("./pages/EventsPage"));
+const EventDetailPage    = lazy(() => import("./pages/EventDetailPage"));
+const CartPage           = lazy(() => import("./pages/CartPage"));
+const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
+const ProfilePage        = lazy(() => import("./pages/ProfilePage"));
+const MyTicketsPage      = lazy(() => import("./pages/MyTicketsPage"));
+const TicketPage         = lazy(() => import("./pages/TicketPage"));
 
-// ✅ Import normalement pour Stripe
+// AUTH PUBLIC
+const LoginPage          = lazy(() => import("./pages/auth/LoginPage"));
+const Register           = lazy(() => import("./pages/auth/Register"));
+const AuthCallback       = lazy(() => import("./pages/auth/Callback"));
+const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword"));
+
+// DASHBOARDS
+const DashboardPivot     = lazy(() => import("./pages/DashboardPivot"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
+const NewEventPage       = lazy(() => import("./pages/admin/NewEventPage"));
+
+// ADMIN
+const AdminLoginPage     = lazy(() => import("./pages/admin/AdminLoginPage"));
+const ScanPage           = lazy(() => import("./pages/admin/ScanPage"));
+const CheckinDashboard   = lazy(() => import("./pages/admin/CheckinDashboard"));
+const MobileScanPage     = lazy(() => import("./pages/admin/MobileScanPage"));
+const OfflineScanPage    = lazy(() => import("./pages/admin/OfflineScanPage"));
+const AdminToolsPage     = lazy(() => import("./pages/admin/AdminToolsPage"));
+const StaffHomePage      = lazy(() => import("./pages/admin/StaffHomePage"));
+
+// ✅ Import normal
 import ConfirmationPage from "./components/ConfirmationPage";
 
 const PageLoader = () => (
@@ -40,12 +68,38 @@ export default function App() {
             <Navbar />
             <main className="flex-grow relative pt-20">
               <Routes>
-                {/* --- ROUTES PUBLIQUES, PROTECTED ET ADMIN --- */}
-                {/* (Gardez exactement vos routes telles quelles, elles sont bien configurées) */}
+                {/* --- PUBLIC --- */}
                 <Route path="/" element={<><Hero /><HomePage /></>} />
                 <Route path="/events" element={<EventsPage />} />
-                {/* ... le reste de vos routes ... */}
-                
+                <Route path="/events/:id" element={<EventDetailPage />} />
+                <Route path="/cart" element={<CartPage />} />
+
+                {/* --- AUTH --- */}
+                <Route path="/auth/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+                <Route path="/auth/register" element={<PublicRoute><Register /></PublicRoute>} />
+                <Route path="/auth/forgot" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+
+                {/* --- PROTECTED (CLIENT) --- */}
+                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route path="/my-tickets" element={<ProtectedRoute><MyTicketsPage /></ProtectedRoute>} />
+                <Route path="/ticket/:id" element={<ProtectedRoute><TicketPage /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardPivot /></ProtectedRoute>} />
+                <Route path="/confirmation" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
+                <Route path="/success" element={<ProtectedRoute><SuccessPage /></ProtectedRoute>} />
+
+                {/* --- ADMIN --- */}
+                <Route path="/admin/login" element={<PublicRoute><AdminLoginPage /></PublicRoute>} />
+                <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+                <Route path="/admin/events/new" element={<AdminRoute><NewEventPage /></AdminRoute>} />
+                <Route path="/admin/tools" element={<AdminRoute><AdminToolsPage /></AdminRoute>} />
+                <Route path="/admin/staff" element={<AdminRoute><StaffHomePage /></AdminRoute>} />
+                <Route path="/admin/scan" element={<AdminRoute><ScanPage /></AdminRoute>} />
+                <Route path="/admin/checkin-dashboard" element={<AdminRoute><CheckinDashboard /></AdminRoute>} />
+                <Route path="/admin/scan/mobile" element={<AdminRoute><MobileScanPage /></AdminRoute>} />
+                <Route path="/admin/scan/offline" element={<AdminRoute><OfflineScanPage /></AdminRoute>} />
+
+                {/* --- 404 --- */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
