@@ -1,10 +1,16 @@
 .hero-section {
   width: 100%;
-  padding: 100px 20px 60px 20px;
+  padding: 80px 16px 40px 16px;
   display: flex;
   justify-content: center;
   background: transparent;
   overflow: visible !important;
+}
+
+@media (min-width: 768px) {
+  .hero-section {
+    padding: 100px 20px 60px 20px;
+  }
 }
 
 .hero-container {
@@ -14,84 +20,121 @@
   overflow: visible !important;
 }
 
-/* --- BADGE "AGENDA OFFICIEL" (AGRANDI ET PLUS LISIBLE) --- */
+/* BADGE */
 .badge-official {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.08); /* Contraste augmenté */
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 10px 24px; /* Padding agrandi */
+  padding: 8px 16px;
   border-radius: 50px;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .badge-official {
+    gap: 12px;
+    padding: 10px 24px;
+    margin-bottom: 40px;
+  }
 }
 
 .badge-text {
   color: #f3cc4d;
-  font-size: 14px; /* Augmenté pour la visibilité */
-  font-weight: 900; /* Ultra-gras pour l'accessibilité */
-  letter-spacing: 2.5px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2px;
 }
 
-/* --- TITRE (HARMONISÉ ET SÉCURISÉ) --- */
+@media (min-width: 768px) {
+  .badge-text {
+    font-size: 14px;
+    letter-spacing: 2.5px;
+  }
+}
+
+/* TITRE */
 .hero-main-title {
   font-family: 'Poppins', sans-serif;
   font-weight: 950;
   font-style: italic;
   text-transform: uppercase;
   line-height: 1.1;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
   overflow: visible !important;
+}
+
+@media (min-width: 768px) {
+  .hero-main-title {
+    margin-bottom: 40px;
+  }
 }
 
 .line-white {
   color: #ffffff;
-  font-size: clamp(2.8rem, 9vw, 5.5rem); /* Légèrement ré-augmenté pour visibilité */
+  /* ✅ Réduit sur mobile */
+  font-size: clamp(2rem, 8vw, 5.5rem);
   display: inline-block;
   padding-right: 0.15em;
   margin-right: -0.15em;
 }
 
 .line-gradient {
-  font-size: clamp(3.2rem, 11vw, 7rem); /* Légèrement ré-augmenté pour visibilité */
+  /* ✅ Réduit sur mobile */
+  font-size: clamp(2.2rem, 9vw, 7rem);
   background: linear-gradient(90deg, #f3cc4d 0%, #ff4d6d 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
-  
-  /* Protection contre le "E" cassé */
-  padding-right: 35px; 
-  margin-right: -35px; 
+  padding-right: 20px;
+  margin-right: -20px;
   overflow: visible !important;
 }
 
-/* --- DESCRIPTION ET BOUTON --- */
+/* DESCRIPTION ET BOUTON */
 .hero-content-footer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 40px;
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .hero-content-footer {
+    gap: 40px;
+  }
 }
 
 .hero-tagline {
-  color: rgba(255, 255, 255, 0.6); /* Contraste légèrement augmenté */
-  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  color: rgba(255, 255, 255, 0.6);
+  /* ✅ Réduit sur mobile */
+  font-size: clamp(0.85rem, 2.5vw, 1.6rem);
   font-style: italic;
   max-width: 750px;
   line-height: 1.6;
+  padding: 0 8px;
 }
 
 .hero-cta-btn {
   background-color: #ffffff;
   color: #1a0525;
-  padding: 20px 60px;
+  /* ✅ Padding réduit sur mobile */
+  padding: 14px 36px;
   border-radius: 50px;
   font-weight: 900;
-  font-size: 1.1rem; /* Texte bouton plus gros */
+  font-size: 0.95rem;
   text-decoration: none;
   transition: all 0.3s ease;
   box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+}
+
+@media (min-width: 768px) {
+  .hero-cta-btn {
+    padding: 20px 60px;
+    font-size: 1.1rem;
+  }
 }
 
 .hero-cta-btn:hover {
