@@ -26,7 +26,7 @@ interface AuthContextType extends AuthState {
 }
 
 const profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
-const CACHE_DURATION = 30000;
+const CACHE_DURATION = 60000; // ✅ 1 minute de cache (au lieu de 30s)
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -40,75 +40,74 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (!force) {
       const cached = profileCache.get(userId);
-      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) return cached.data;
+      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+        return cached.data;
+      }
     }
 
-    try {
-      if (!supabase) throw new Error("Supabase client non disponible");
+    // ✅ Retry automatique jusqu'à 3 fois si Supabase est lent
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
 
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+        if (error) {
+          if (attempt < 3) {
+            await new Promise(r => setTimeout(r, attempt * 500)); // 500ms, 1s
+            continue;
+          }
+          console.error("[Auth] Erreur profil après 3 tentatives:", error.message);
+          return null;
+        }
 
-      if (error) {
-        console.error("[Auth] Erreur profil:", error.message);
-        return null;
-      }
+        if (data) {
+          const profileData: UserProfile = {
+            id: data.id,
+            email: data.email,
+            full_name: data.full_name || data.prenom || null,
+            is_admin: data.is_admin === true || data.est_admin === true,
+            role: data.role || "user",
+          };
+          profileCache.set(userId, { data: profileData, timestamp: Date.now() });
+          return profileData;
+        }
 
-      // ✅ Profil trouvé → retourner directement
-      if (data) {
-        const profileData: UserProfile = {
-          id: data.id,
-          email: data.email,
-          full_name: data.full_name || data.prenom || null,
-          is_admin: data.is_admin === true || data.est_admin === true,
-          role: data.role || "user",
+        // Nouveau client — créer le profil
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const newProfile = {
+          id: userId,
+          email: authUser?.email || null,
+          full_name: authUser?.user_metadata?.full_name || null,
+          role: "user",
+          is_admin: false,
+          discount_status: "none",
         };
-        console.log("[Auth] Profil normalisé avec succès:", profileData);
-        profileCache.set(userId, { data: profileData, timestamp: Date.now() });
-        return profileData;
+
+        await supabase.from("user_profiles").insert(newProfile);
+
+        const fallback: UserProfile = {
+          id: userId,
+          email: authUser?.email || null,
+          full_name: authUser?.user_metadata?.full_name || null,
+          is_admin: false,
+          role: "user",
+        };
+        profileCache.set(userId, { data: fallback, timestamp: Date.now() });
+        return fallback;
+
+      } catch (err: any) {
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, attempt * 500));
+        } else {
+          console.error('[Auth] Erreur critique profil:', err.message);
+          return null;
+        }
       }
-
-      // ✅ Nouveau client — profil inexistant → créer automatiquement
-      console.log("[Auth] Profil introuvable, création automatique...");
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-
-      const newProfile = {
-        id: userId,
-        email: authUser?.email || null,
-        full_name: authUser?.user_metadata?.full_name || null,
-        role: "user",
-        is_admin: false,
-        discount_status: "none",
-      };
-
-      const { error: insertError } = await supabase
-        .from("user_profiles")
-        .insert(newProfile);
-
-      if (insertError) {
-        console.error("[Auth] Erreur création profil:", insertError.message);
-      } else {
-        console.log("[Auth] Nouveau profil créé !");
-      }
-
-      // ✅ Profil minimal pour ne jamais bloquer l'app
-      const fallback: UserProfile = {
-        id: userId,
-        email: authUser?.email || null,
-        full_name: authUser?.user_metadata?.full_name || null,
-        is_admin: false,
-        role: "user",
-      };
-      profileCache.set(userId, { data: fallback, timestamp: Date.now() });
-      return fallback;
-
-    } catch (err: any) {
-      console.error('[Auth] Erreur critique profil:', err.message);
-      return null;
     }
+    return null;
   }, []);
 
   const updateAuthState = useCallback(async (session: Session | null) => {
@@ -121,17 +120,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let isMounted = true;
 
-    if (!supabase) {
-      setState(prev => ({ ...prev, loading: false, error: "Client Supabase manquant" }));
-      return;
-    }
-
-    // ✅ Timeout de sécurité — jamais bloqué plus de 5s
+    // ✅ Timeout sécurité 8s (au lieu de 5s) pour les connexions mobiles lentes
     const timeout = setTimeout(() => {
       if (isMounted) {
         setState(prev => prev.loading ? { ...prev, loading: false } : prev);
       }
-    }, 5000);
+    }, 8000);
 
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -171,7 +165,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const signInWithGoogle = async () => {
-    if (!supabase) return;
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     await supabase.auth.signInWithOAuth({
       provider: 'google',
