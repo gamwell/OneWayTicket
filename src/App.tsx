@@ -17,42 +17,44 @@ import PublicRoute from "./components/PublicRoute";
 import AutoLogout from "./components/AutoLogout";
 
 // --- PAGES (Lazy Loading) ---
-const HomePage           = lazy(() => import("./pages/HomePage"));
-const EventsPage         = lazy(() => import("./pages/EventsPage"));
-const EventDetailPage    = lazy(() => import("./pages/EventDetailPage"));
-const CartPage           = lazy(() => import("./pages/CartPage"));
-const SuccessPage        = lazy(() => import("./pages/SuccessPage"));
-const ProfilePage        = lazy(() => import("./pages/ProfilePage"));
-const MyTicketsPage      = lazy(() => import("./pages/MyTicketsPage"));
-const TicketPage         = lazy(() => import("./pages/TicketPage"));
+const HomePage            = lazy(() => import("./pages/HomePage"));
+const EventsPage          = lazy(() => import("./pages/EventsPage"));
+const EventDetailPage     = lazy(() => import("./pages/EventDetailPage"));
+const CartPage            = lazy(() => import("./pages/CartPage"));
+const SuccessPage         = lazy(() => import("./pages/SuccessPage"));
+const ProfilePage         = lazy(() => import("./pages/ProfilePage"));
+const MyTicketsPage       = lazy(() => import("./pages/MyTicketsPage"));
+const TicketPage          = lazy(() => import("./pages/TicketPage"));
+const DashboardPage       = lazy(() => import("./pages/DashboardPage"));
 
-// ✅ NOUVELLES PAGES
-const AboutPage          = lazy(() => import("./pages/AboutPage"));
-const TermsPage          = lazy(() => import("./pages/legal/TermsPage"));
-const PrivacyPage        = lazy(() => import("./pages/legal/PrivacyPage"));
+// LEGAL & ABOUT
+const AboutPage           = lazy(() => import("./pages/AboutPage"));
+const TermsPage           = lazy(() => import("./pages/legal/TermsPage"));
+const PrivacyPage         = lazy(() => import("./pages/legal/PrivacyPage"));
 const MentionsLegalesPage = lazy(() => import("./pages/legal/MentionsLegalesPage"));
 
 // AUTH PUBLIC
-const LoginPage          = lazy(() => import("./pages/auth/LoginPage"));
-const Register           = lazy(() => import("./pages/auth/Register"));
-const AuthCallback       = lazy(() => import("./pages/auth/Callback"));
-const ForgotPassword     = lazy(() => import("./pages/auth/ForgotPassword"));
+const LoginPage           = lazy(() => import("./pages/auth/LoginPage"));
+const Register            = lazy(() => import("./pages/auth/Register"));
+const AuthCallback        = lazy(() => import("./pages/auth/Callback"));
+const ForgotPassword      = lazy(() => import("./pages/auth/ForgotPassword"));
 
 // DASHBOARDS
-const DashboardPivot     = lazy(() => import("./pages/DashboardPivot"));
-const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage"));
-const NewEventPage       = lazy(() => import("./pages/admin/NewEventPage"));
+const DashboardPivot      = lazy(() => import("./pages/DashboardPivot"));
+const AdminDashboardPage  = lazy(() => import("./pages/admin/AdminDashboardPage"));
+const NewEventPage        = lazy(() => import("./pages/admin/NewEventPage"));
 
 // ADMIN
-const AdminLoginPage     = lazy(() => import("./pages/admin/AdminLoginPage"));
-const ScanPage           = lazy(() => import("./pages/admin/ScanPage"));
-const CheckinDashboard   = lazy(() => import("./pages/admin/CheckinDashboard"));
-const MobileScanPage     = lazy(() => import("./pages/admin/MobileScanPage"));
-const OfflineScanPage    = lazy(() => import("./pages/admin/OfflineScanPage"));
-const AdminToolsPage     = lazy(() => import("./pages/admin/AdminToolsPage"));
-const StaffHomePage      = lazy(() => import("./pages/admin/StaffHomePage"));
+const AdminLoginPage      = lazy(() => import("./pages/admin/AdminLoginPage"));
+const ScanPage            = lazy(() => import("./pages/admin/ScanPage"));
+const CheckinDashboard    = lazy(() => import("./pages/admin/CheckinDashboard"));
+const MobileScanPage      = lazy(() => import("./pages/admin/MobileScanPage"));
+const OfflineScanPage     = lazy(() => import("./pages/admin/OfflineScanPage"));
+const AdminToolsPage      = lazy(() => import("./pages/admin/AdminToolsPage"));
+const StaffHomePage       = lazy(() => import("./pages/admin/StaffHomePage"));
+const AdminTicketsPage    = lazy(() => import("./pages/admin/AdminTicketsPage")); // ✅ NOUVEAU
 
-// ✅ Import normal
+// Import normal
 import ConfirmationPage from "./components/ConfirmationPage";
 
 const PageLoader = () => (
@@ -80,7 +82,7 @@ export default function App() {
                 <Route path="/events/:id" element={<EventDetailPage />} />
                 <Route path="/cart" element={<CartPage />} />
 
-                {/* ✅ ABOUT & LEGAL */}
+                {/* ABOUT & LEGAL */}
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/legal/terms" element={<TermsPage />} />
                 <Route path="/legal/privacy" element={<PrivacyPage />} />
@@ -97,6 +99,7 @@ export default function App() {
                 <Route path="/my-tickets" element={<ProtectedRoute><MyTicketsPage /></ProtectedRoute>} />
                 <Route path="/ticket/:id" element={<ProtectedRoute><TicketPage /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardPivot /></ProtectedRoute>} />
+                <Route path="/dashboard/user" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
                 <Route path="/confirmation" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
                 <Route path="/success" element={<ProtectedRoute><SuccessPage /></ProtectedRoute>} />
 
@@ -110,6 +113,7 @@ export default function App() {
                 <Route path="/admin/checkin-dashboard" element={<AdminRoute><CheckinDashboard /></AdminRoute>} />
                 <Route path="/admin/scan/mobile" element={<AdminRoute><MobileScanPage /></AdminRoute>} />
                 <Route path="/admin/scan/offline" element={<AdminRoute><OfflineScanPage /></AdminRoute>} />
+                <Route path="/admin/tickets" element={<AdminRoute><AdminTicketsPage /></AdminRoute>} /> {/* ✅ NOUVEAU */}
 
                 {/* --- 404 --- */}
                 <Route path="*" element={<Navigate to="/" replace />} />
