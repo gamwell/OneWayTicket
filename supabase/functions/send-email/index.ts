@@ -1,38 +1,47 @@
-import { serve } from "https://deno.land/std/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 serve(async (req) => {
-  const { to, subject, text } = await req.json();
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  if (!to) {
-    return new Response("Missing email recipient", { status: 400 });
-  }
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY manquante");
 
-  const emailRes = await fetch("https://api.mailchannels.net/tx/v1/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      personalizations: [
-        {
-          to: [{ email: to }],
-        },
-      ],
-      from: {
-        email: "no-reply@onewayticket.com",
-        name: "ONEWAYTICKET",
+    const { to, subject, text, html } = await req.json();
+    if (!to) return new Response(JSON.stringify({ error: "Email destinataire manquant" }), { status: 400, headers: corsHeaders });
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
       },
-      subject,
-      content: [
-        {
-          type: "text/plain",
-          value: text,
-        },
-      ],
-    }),
-  });
+      body: JSON.stringify({
+        from: "ONEWAYTICKET <no-reply@quarksydigital.com>",
+        to: [to],
+        subject,
+        ...(html ? { html } : { text: text || "" }),
+      }),
+    });
 
-  if (!emailRes.ok) {
-    return new Response("Email sending failed", { status: 500 });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
-
-  return new Response("Email sent", { status: 200 });
 });

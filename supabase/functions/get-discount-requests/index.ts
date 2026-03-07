@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
 };
 
 Deno.serve(async (req) => {
@@ -58,8 +59,42 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Paramètres invalides" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const { error } = await supabaseAdmin.from("user_profiles").update({ discount_status: action }).eq("id", userId);
+      // Récupérer email + profil avant update
+      const { data: userProfile } = await supabaseAdmin
+        .from("user_profiles")
+        .select("email, full_name, profile_type_id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const { error } = await supabaseAdmin
+        .from("user_profiles")
+        .update({ discount_status: action })
+        .eq("id", userId);
       if (error) throw error;
+
+      // Envoyer email de notification
+      if (userProfile?.email) {
+        const profileName = userProfile.profile_type_id === 2
+          ? "Étudiant (-20%)"
+          : userProfile.profile_type_id === 3
+          ? "Senior (-25%)"
+          : "Tarif réduit";
+
+        const firstName = userProfile.full_name?.split(" ")[0] || "cher(e) client(e)";
+
+        const subject = action === "approved"
+          ? "✅ Votre tarif réduit a été validé — ONEWAYTICKET"
+          : "❌ Votre demande de tarif réduit — ONEWAYTICKET";
+
+        const text = action === "approved"
+          ? `Bonjour ${firstName},\n\nBonne nouvelle ! Votre demande de tarif réduit "${profileName}" a été validée par notre équipe.\n\nVotre réduction sera automatiquement appliquée lors de votre prochain achat sur ONEWAYTICKET.\n\nMerci de votre confiance,\nL'équipe ONEWAYTICKET\nhttps://quarksydigital.com`
+          : `Bonjour ${firstName},\n\nNous avons étudié votre demande de tarif réduit "${profileName}", mais nous ne sommes pas en mesure de la valider en l'état.\n\nSi vous pensez qu'il s'agit d'une erreur ou souhaitez soumettre un nouveau justificatif, contactez-nous à contact@onewayticket.fr.\n\nCordialement,\nL'équipe ONEWAYTICKET\nhttps://quarksydigital.com`;
+
+        // Appel à la fonction send-email existante
+        await supabaseAdmin.functions.invoke("send-email", {
+          body: { to: userProfile.email, subject, text },
+        });
+      }
 
       return new Response(JSON.stringify({ success: true, action }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
