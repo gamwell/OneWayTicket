@@ -46,10 +46,9 @@ const EventDetailPage = () => {
 
         if (eventRes.data) setEvent(eventRes.data);
 
-        if (profileRes.data) {
-          setDiscountStatus(profileRes.data.discount_status || "none");
-          setProfileTypeName(profileRes.data.profile_types?.name || null);
-        }
+        // Si pas de profil ou discount_status NULL → "none" pour afficher le bouton
+        setDiscountStatus(profileRes.data?.discount_status ?? "none");
+        setProfileTypeName(profileRes.data?.profile_types?.name || null);
       } catch (err) {
         console.error("Erreur:", err);
       }
@@ -220,7 +219,7 @@ const EventDetailPage = () => {
                   {adding ? "Ajout..." : `Acheter — ${finalPrice} €`}
                 </button>
 
-                {/* Bouton demander réduction — visible si connecté et pas encore approuvé */}
+                {/* Bouton demander réduction — visible si connecté et pas encore approuvé/pending */}
                 {user && discountStatus !== "approved" && discountStatus !== "pending" && (
                   <button
                     onClick={() => setShowDiscountModal(true)}
