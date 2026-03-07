@@ -45,6 +45,14 @@ const EventDetailPage = () => {
         ]);
 
         if (eventRes.data) setEvent(eventRes.data);
+		
+		// Ajoute juste ici ↓
+        console.log("👤 User ID:", user?.id);
+        console.log("📦 Profile data:", profileRes.data);
+        console.log("🎫 Discount status:", profileRes.data?.discount_status);
+
+        setDiscountStatus(profileRes.data?.discount_status ?? "none");
+        setProfileTypeName(profileRes.data?.profile_types?.name || null);
 
         // Si pas de profil ou discount_status NULL → "none" pour afficher le bouton
         setDiscountStatus(profileRes.data?.discount_status ?? "none");
