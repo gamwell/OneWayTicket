@@ -2,13 +2,12 @@ import React, { createContext, useContext, useEffect, useState, useCallback, Rea
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
 
-// --- TYPES ---
 export type UserProfile = {
   id: string;
   email: string | null;
   full_name: string | null;
   role: "superadmin" | "admin" | "administrateur" | "client" | "user" | "utilisateur";
-  is_admin: boolean; // Colonne principale utilisée par l'app
+  is_admin: boolean;
 };
 
 interface AuthState {
@@ -26,7 +25,6 @@ interface AuthContextType extends AuthState {
   signUp: (e: string, p: string, n: string) => Promise<{ error: AuthError | null }>;
 }
 
-// --- CACHE ---
 const profileCache = new Map<string, { data: UserProfile | null; timestamp: number }>();
 const CACHE_DURATION = 30000;
 
@@ -34,28 +32,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    loading: true,
-    error: null,
+    user: null, profile: null, loading: true, error: null,
   });
 
-  // --- RÉCUPÉRATION DU PROFIL ---
   const fetchProfile = useCallback(async (userId: string, force = false): Promise<UserProfile | null> => {
     if (!userId) return null;
 
     if (!force) {
       const cached = profileCache.get(userId);
-      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-        return cached.data;
-      }
+      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) return cached.data;
     }
 
     try {
       if (!supabase) throw new Error("Supabase client non disponible");
 
-      // ✅ Correction : Utilisation du nom technique "user_profiles" 
-      // car "profils d'utilisateurs" n'est pas reconnu par le moteur SQL
       const { data, error } = await supabase
         .from("user_profiles")
         .select('*')
@@ -63,26 +53,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .maybeSingle();
 
       if (error) {
-        console.error("[Auth] Erreur lors de la récupération du profil:", error.message);
+        console.error("[Auth] Erreur profil:", error.message);
         return null;
       }
 
+      // ✅ Profil trouvé → retourner directement
       if (data) {
-        // ✅ Correction : Mapping basé sur votre JSON réel (is_admin et role sans accents)
         const profileData: UserProfile = {
           id: data.id,
           email: data.email,
           full_name: data.full_name || data.prenom || null,
           is_admin: data.is_admin === true || data.est_admin === true,
-          role: data.role || data.rôle || "user",
+          role: data.role || "user",
         };
-
         console.log("[Auth] Profil normalisé avec succès:", profileData);
         profileCache.set(userId, { data: profileData, timestamp: Date.now() });
         return profileData;
       }
 
-      return null;
+      // ✅ Nouveau client — profil inexistant → créer automatiquement
+      console.log("[Auth] Profil introuvable, création automatique...");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+
+      const newProfile = {
+        id: userId,
+        email: authUser?.email || null,
+        full_name: authUser?.user_metadata?.full_name || null,
+        role: "user",
+        is_admin: false,
+        discount_status: "none",
+      };
+
+      const { error: insertError } = await supabase
+        .from("user_profiles")
+        .insert(newProfile);
+
+      if (insertError) {
+        console.error("[Auth] Erreur création profil:", insertError.message);
+      } else {
+        console.log("[Auth] Nouveau profil créé !");
+      }
+
+      // ✅ Profil minimal pour ne jamais bloquer l'app
+      const fallback: UserProfile = {
+        id: userId,
+        email: authUser?.email || null,
+        full_name: authUser?.user_metadata?.full_name || null,
+        is_admin: false,
+        role: "user",
+      };
+      profileCache.set(userId, { data: fallback, timestamp: Date.now() });
+      return fallback;
+
     } catch (err: any) {
       console.error('[Auth] Erreur critique profil:', err.message);
       return null;
@@ -92,15 +114,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateAuthState = useCallback(async (session: Session | null) => {
     const user = session?.user ?? null;
     let profile: UserProfile | null = null;
-    
-    if (user) {
-      profile = await fetchProfile(user.id);
-    }
-    
+    if (user) profile = await fetchProfile(user.id);
     setState({ user, profile, loading: false, error: null });
   }, [fetchProfile]);
 
-  // --- GESTION SESSION ---
   useEffect(() => {
     let isMounted = true;
 
@@ -109,12 +126,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
+    // ✅ Timeout de sécurité — jamais bloqué plus de 5s
+    const timeout = setTimeout(() => {
+      if (isMounted) {
+        setState(prev => prev.loading ? { ...prev, loading: false } : prev);
+      }
+    }, 5000);
+
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        if (isMounted) updateAuthState(session);
+        if (isMounted) updateAuthState(session).finally(() => clearTimeout(timeout));
       })
       .catch(err => {
         if (isMounted) setState(prev => ({ ...prev, loading: false, error: err.message }));
+        clearTimeout(timeout);
       });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -129,10 +154,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      clearTimeout(timeout);
     };
   }, [updateAuthState]);
-
-  // --- ACTIONS ---
 
   const logout = async () => {
     try {
@@ -173,9 +197,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!error && data?.user) {
       supabase.functions.invoke('send-welcome-email', {
         body: { record: { email, first_name: fullName, profile_type: "standard" } }
-      }).then(({ error: funcError }) => {
-        if (funcError) console.warn("⚠️ Email warning:", funcError);
-      });
+      }).catch(e => console.warn("⚠️ Email warning:", e));
     }
 
     return { error };
@@ -189,14 +211,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{
-      ...state,
-      logout,
-      signInWithGoogle,
-      refreshProfile,
-      signIn,
-      signUp,
-    }}>
+    <AuthContext.Provider value={{ ...state, logout, signInWithGoogle, refreshProfile, signIn, signUp }}>
       {children}
     </AuthContext.Provider>
   );
