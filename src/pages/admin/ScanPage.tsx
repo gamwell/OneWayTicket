@@ -79,8 +79,27 @@ export default function ScanPage() {
         return;
       }
 
-      await supabase.from("tickets").update({ checked_in: true }).eq("id", ticket.id);
-      await supabase.from("scan_logs").insert({ ticket_id: ticket.id, scanned_by: user?.id || null });
+      // --- MISE À JOUR POUR LE DASHBOARD ---
+      const scanTimestamp = new Date().toISOString();
+
+      // 1. On marque le billet comme utilisé ET on enregistre l'heure du scan
+      await supabase
+        .from("tickets")
+        .update({ 
+          checked_in: true, 
+          status: "used", 
+          scanned_at: scanTimestamp // ✅ Crucial pour le compteur 1/9
+        })
+        .eq("id", ticket.id);
+
+      // 2. On insère le log avec l'heure précise
+      await supabase
+        .from("scan_logs")
+        .insert({ 
+          ticket_id: ticket.id, 
+          scanned_by: user?.id || null,
+          scanned_at: scanTimestamp // ✅ Crucial pour le flux "Derniers accès"
+        });
 
       setStatus("valid");
       setLastTicket(ticket);
