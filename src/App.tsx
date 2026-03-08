@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 
-// --- STRUCTURE ---
+// --- STRUCTURE & COMPOSANTS STATIQUES ---
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Hero from "./components/Hero/Hero";
@@ -15,6 +15,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import PublicRoute from "./components/PublicRoute";
 import AutoLogout from "./components/AutoLogout";
+import ConfirmationPage from "./components/ConfirmationPage"; // ✅ DÉPLACÉ ICI EN HAUT
 
 // --- PAGES (Lazy Loading) ---
 const HomePage            = lazy(() => import("./pages/HomePage"));
@@ -52,10 +53,7 @@ const MobileScanPage      = lazy(() => import("./pages/admin/MobileScanPage"));
 const OfflineScanPage     = lazy(() => import("./pages/admin/OfflineScanPage"));
 const AdminToolsPage      = lazy(() => import("./pages/admin/AdminToolsPage"));
 const StaffHomePage       = lazy(() => import("./pages/admin/StaffHomePage"));
-const AdminTicketsPage    = lazy(() => import("./pages/admin/AdminTicketsPage")); // ✅ NOUVEAU
-
-// Import normal
-import ConfirmationPage from "./components/ConfirmationPage";
+const AdminTicketsPage    = lazy(() => import("./pages/admin/AdminTicketsPage"));
 
 const PageLoader = () => (
   <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#1a0525] z-[9999]">
@@ -113,7 +111,7 @@ export default function App() {
                 <Route path="/admin/checkin-dashboard" element={<AdminRoute><CheckinDashboard /></AdminRoute>} />
                 <Route path="/admin/scan/mobile" element={<AdminRoute><MobileScanPage /></AdminRoute>} />
                 <Route path="/admin/scan/offline" element={<AdminRoute><OfflineScanPage /></AdminRoute>} />
-                <Route path="/admin/tickets" element={<AdminRoute><AdminTicketsPage /></AdminRoute>} /> {/* ✅ NOUVEAU */}
+                <Route path="/admin/tickets" element={<AdminRoute><AdminTicketsPage /></AdminRoute>} />
 
                 {/* --- 404 --- */}
                 <Route path="*" element={<Navigate to="/" replace />} />

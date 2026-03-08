@@ -28,11 +28,7 @@ export default function AdminTicketsPage() {
     try {
       const { data, error } = await supabase
         .from("tickets")
-        .select(`
-          *,
-          events (title, date, location),
-          user_profiles!tickets_user_id_fkey (email, full_name)
-        `)
+        .select("*") // ⬅️ MODIFICATION ICI : On demande juste les billets simples pour tester
         .order("created_at", { ascending: false });
 
       if (error) throw error;
